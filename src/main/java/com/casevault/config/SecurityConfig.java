@@ -30,7 +30,8 @@ public class SecurityConfig {
                 .contentTypeOptions(Customizer.withDefaults())
                 .frameOptions(frameOptions -> frameOptions.deny())
                 .referrerPolicy(referrer -> referrer.policy(ReferrerPolicyHeaderWriter.ReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN))
-                .permissionsPolicy(permissions -> permissions.policy("camera=(), microphone=(), geolocation=()"))
+                .permissionsPolicyHeader(permissions -> permissions.policy("camera=(), microphone=(), geolocation=()"))
+                .contentSecurityPolicy(csp -> csp.policyDirectives("default-src 'self'; frame-ancestors 'none'; object-src 'none'"))
             )
             .sessionManagement(session -> session
                 .sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED)
