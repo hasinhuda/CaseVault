@@ -1,0 +1,6 @@
+# CaseVault Trivy Ignore Configuration
+# Per AGENTS.md rules: ignore a CVE only in .trivyignore with:
+# - reason
+# - evidence (grep showing the feature is unused)
+# - fix requirement
+# - review date
