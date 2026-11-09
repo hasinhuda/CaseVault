@@ -1,0 +1,43 @@
+# CaseVault .gitignore
+
+# Build target
+target/
+*.class
+
+# Maven wrapper repository / cache
+.mvn/repository/
+
+# Sensitive data, credentials and keys (strictly never committed)
+secrets/
+.local-data/
+.env
+.env.*
+*.env
+keysets/
+keyset/
+admin_initial_password*
+*.pem
+*.key
+
+# IDE and Editor files
+.idea/
+*.iml
+*.iws
+*.ipr
+.vscode/
+.settings/
+.classpath
+.project
+bin/
+*.sublime-project
+*.sublime-workspace
+
+# Operating system artifacts
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Crash logs and debug traces
+*.log
+hs_err_pid*
+replay_pid*
