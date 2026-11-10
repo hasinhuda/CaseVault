@@ -4,3 +4,15 @@
 # - evidence (grep showing the feature is unused)
 # - fix requirement
 # - review date
+
+# Reason: spring-webmvc 6.2.19, RCE via XsltView path limitation; fixed only in Spring Framework 7.0.9
+# Evidence: Get-ChildItem src -Recurse -Include *.java,*.html,*.xml,*.properties | Select-String -Pattern "XsltView|SseEmitter|ResponseBodyEmitter|text/event-stream" returns nothing (feature is not used)
+# Fix requirement: Spring Framework 7.0.9 or later (needs Spring Boot 4.x, which AGENTS.md currently forbids)
+# Review date: 2026-12-01
+CVE-2026-47884
+
+# Reason: spring-webmvc 6.2.19, SSE stream corruption with views; fixed only in Spring Framework 7.0.9
+# Evidence: Get-ChildItem src -Recurse -Include *.java,*.html,*.xml,*.properties | Select-String -Pattern "XsltView|SseEmitter|ResponseBodyEmitter|text/event-stream" returns nothing (feature is not used)
+# Fix requirement: Spring Framework 7.0.9 or later (needs Spring Boot 4.x, which AGENTS.md currently forbids)
+# Review date: 2026-12-01
+CVE-2026-47890
