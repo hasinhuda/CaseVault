@@ -86,10 +86,11 @@
         </dependency>
 
         <!-- Cryptography & Security Providers -->
+        <!-- override: fixes Trivy findings (CVE-2025-14813, CVE-2026-8763, CVE-2026-13506, CVE-2026-5598), version verified on Maven Central 2026-11-10 -->
         <dependency>
             <groupId>org.bouncycastle</groupId>
             <artifactId>bcprov-jdk18on</artifactId>
-            <version>1.80</version>
+            <version>1.86</version>
         </dependency>
 
         <!-- Testing -->

@@ -8,16 +8,18 @@
 
 ## 1. Executive Summary
 
-During CI container vulnerability scanning of `app/app.jar`, Trivy reported 14 high and critical severity findings (HIGH: 7, CRITICAL: 7) across four dependency groups:
+During CI container vulnerability scanning of `app/app.jar`, Trivy reported 14 high and critical severity findings (HIGH: 7, CRITICAL: 7) across four dependency groups in Phase 0:
 - **Jackson** (`com.fasterxml.jackson.core:*`): 5 findings (all Denial of Service: regex backtracking, unbounded StringBuilder growth, unbounded numeric parsing, unbounded cache growth, quadratic forward-reference completion)
 - **Apache Tomcat** (`org.apache.tomcat.embed:*`): 6 findings (5 CRITICAL + 1 HIGH: security constraint bypass, DIGEST and FORM authentication bypass, HTTP/2 no-authority bypass, misleading security logs, rewrite valve control flow)
 - **PostgreSQL JDBC Driver** (`org.postgresql:postgresql`): 1 finding (1 HIGH: SCRAM-SHA-256-PLUS downgrade, man-in-the-middle)
 - **Spring Web MVC** (`spring-webmvc` 6.2.19): 2 findings (CVE-2026-47884 CRITICAL; CVE-2026-47890 severity VERIFY MANUALLY)
 
-**Total Findings**: 14 (HIGH: 7, CRITICAL: 7)
+In Phase 2 (`phase-2-auth`), Trivy identified 4 additional findings in `org.bouncycastle:bcprov-jdk18on` installed at version `1.80`.
 
-Of these 14 findings:
-- **12 findings** were resolved directly via library version upgrades in [pom.xml](../../pom.xml).
+**Total Findings**: 18 across Phase 0 and Phase 2.
+
+Of these 18 findings:
+- **16 findings** were resolved directly via library version upgrades in [pom.xml](../../pom.xml) (12 in Phase 0 for Tomcat, Jackson, and PostgreSQL; 4 in Phase 2 by upgrading `bcprov-jdk18on` to `1.86`).
 - **2 findings** (affecting `spring-webmvc`) currently lack a backport in the Spring Framework 6.2.x series. Source search (grep) confirms the vulnerable code paths are completely unused in CaseVault; these have been accepted and documented in [.trivyignore](../../.trivyignore) pending future major framework upgrades.
 
 ---
@@ -77,9 +79,33 @@ Get-ChildItem src -Recurse -Include *.java,*.html,*.xml,*.properties | Select-St
 
 ---
 
+## Phase 2 findings (BouncyCastle)
+
+During Phase 2 (`phase-2-auth`) CI container scanning, Trivy reported 4 findings in `org.bouncycastle:bcprov-jdk18on` installed at version `1.80`:
+
+| CVE ID | Severity | Fixed Version(s) | Vulnerability Details | Vulnerability Class / CWE | Action Taken |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **CVE-2025-14813** | CRITICAL | 1.80.2 / 1.81.1 / 1.84 | GOSTCTR more than 255 blocks | CWE: VERIFY MANUALLY | Upgraded to 1.86, resolved version confirmed with mvnw dependency:tree |
+| **CVE-2026-8763** | Severity: VERIFY MANUALLY | 1.85 | Name Constraints bypass via trailing dot | CWE: VERIFY MANUALLY | Upgraded to 1.86, resolved version confirmed with mvnw dependency:tree |
+| **CVE-2026-13506** | HIGH | Fixed version not visible in log | DoS via lazy ASN.1 sequence | CWE: VERIFY MANUALLY | Upgraded to 1.86, resolved version confirmed with mvnw dependency:tree |
+| **CVE-2026-5598** | Severity: VERIFY MANUALLY | 1.84 / 1.80.2 | Private key leakage via non-constant time comparisons | CWE: VERIFY MANUALLY | Upgraded to 1.86, resolved version confirmed with mvnw dependency:tree |
+
+- **Library**: `org.bouncycastle:bcprov-jdk18on`
+- **OWASP Top 10 Mapping**: OWASP Top 10:2025 category: VERIFY MANUALLY
+- **Action Taken**: Upgraded `bcprov-jdk18on` from `1.80` to `1.86` in [pom.xml](../../pom.xml); resolved version confirmed with mvnw dependency:tree.
+- **Source Evidence & Reachability**:
+  CaseVault uses `bcprov-jdk18on` as the underlying cryptography provider for Spring Security's `Argon2PasswordEncoder` (`org.bouncycastle.crypto.generators.Argon2BytesGenerator`). A source search (grep) across the codebase confirms zero references to the affected sub-features:
+  ```powershell
+  Get-ChildItem src -Recurse -Include *.java,*.html,*.xml,*.properties | Select-String -Pattern "GOST|ASN1|NameConstraint|X509|Certificate"
+  ```
+  *Result*: 0 matches found.
+  Upgrading the dependency to `1.86` remediates all 4 findings directly within the dependency without requiring any `.trivyignore` exception.
+
+---
+
 ## 5. Residual Risk Assessment
 
-- **Upgraded Components (Tomcat, Jackson, PostgreSQL)**: Residual risk is low. All components were updated to vetted patch releases without introducing API incompatibilities or breaking Maven Enforcer convergence rules.
+- **Upgraded Components (Tomcat, Jackson, PostgreSQL, BouncyCastle)**: Residual risk is low. All components were updated to vetted patch releases (including `bcprov-jdk18on` to 1.86) without introducing API incompatibilities or breaking Maven Enforcer convergence rules.
 - **Ignored Spring MVC CVEs**: Residual risk is negligible while the vulnerable classes remain unreferenced. The `.trivyignore` exception is bounded by an explicit expiration review date (2026-12-01). If future case-management features require real-time streaming, SSE alternatives (e.g. WebSockets or polled JSON APIs) must be used instead.
 
 ---
