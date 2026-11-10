@@ -4,96 +4,19 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CaseVault - Secure Login</title>
-    <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            background-color: #0d1117;
-            color: #c9d1d9;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-        }
-        .login-card {
-            background-color: #161b22;
-            border: 1px solid #30363d;
-            border-radius: 8px;
-            padding: 32px;
-            width: 360px;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.5);
-        }
-        h1 {
-            font-size: 20px;
-            margin-bottom: 24px;
-            text-align: center;
-            color: #58a6ff;
-        }
-        .form-group {
-            margin-bottom: 16px;
-        }
-        label {
-            display: block;
-            margin-bottom: 6px;
-            font-size: 14px;
-            color: #8b949e;
-        }
-        input[type="text"], input[type="password"] {
-            width: 100%;
-            padding: 10px;
-            background-color: #0d1117;
-            border: 1px solid #30363d;
-            border-radius: 6px;
-            color: #c9d1d9;
-            box-sizing: border-box;
-            font-size: 14px;
-        }
-        input[type="text"]:focus, input[type="password"]:focus {
-            border-color: #58a6ff;
-            outline: none;
-        }
-        button {
-            width: 100%;
-            padding: 10px;
-            background-color: #238636;
-            color: #ffffff;
-            border: none;
-            border-radius: 6px;
-            font-size: 14px;
-            font-weight: 600;
-            cursor: pointer;
-            margin-top: 8px;
-        }
-        button:hover {
-            background-color: #2ea043;
-        }
-        .alert {
-            padding: 10px;
-            border-radius: 6px;
-            margin-bottom: 16px;
-            font-size: 13px;
-        }
-        .alert-danger {
-            background-color: rgba(248, 81, 73, 0.15);
-            border: 1px solid #f85149;
-            color: #ff7b72;
-        }
-        .alert-info {
-            background-color: rgba(56, 139, 253, 0.15);
-            border: 1px solid #388bfd;
-            color: #79c0ff;
-        }
-    </style>
+    <link rel="stylesheet" th:href="@{/css/app.css}"/>
 </head>
-<body>
-<div class="login-card">
+<body class="login-body">
+<a href="#login-main" class="skip-link">Skip to login form</a>
+
+<div id="login-main" class="login-card">
     <h1>CaseVault Access</h1>
 
-    <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}">
+    <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}" role="alert" aria-live="polite">
         Error message
     </div>
 
-    <div th:if="${infoMessage}" class="alert alert-info" th:text="${infoMessage}">
+    <div th:if="${infoMessage}" class="alert alert-info" th:text="${infoMessage}" role="status" aria-live="polite">
         Information message
     </div>
 
@@ -102,17 +25,16 @@
 
         <div class="form-group">
             <label for="username">Username</label>
-            <input type="text" id="username" name="username" required autofocus autocomplete="username"/>
+            <input type="text" id="username" name="username" class="form-control" required autofocus autocomplete="username"/>
         </div>
 
         <div class="form-group">
             <label for="password">Password</label>
-            <input type="password" id="password" name="password" required autocomplete="current-password"/>
+            <input type="password" id="password" name="password" class="form-control" required autocomplete="current-password"/>
         </div>
 
-        <button type="submit">Sign In</button>
+        <button type="submit" class="btn btn-primary btn-block">Sign In</button>
     </form>
 </div>
 </body>
 </html>
-

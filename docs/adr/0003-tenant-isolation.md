@@ -60,4 +60,12 @@ In the initial tenant model, `AccessPolicy` required `caller.organisationId == t
 5. **Case Creation Restriction (FR-04)**:
    - Case creation (`POST /api/cases`) is restricted strictly to users with the `CLIENT` role. Managers and analysts do not create cases on behalf of clients via this endpoint.
 
+### Threat Model Note: Privileged Organisation Code `ORG_INTERNAL` (Phase 4)
+
+The internal consultancy organisation is identified deterministically by organisation code `ORG_INTERNAL`, which is bootstrapped by `DataBootstrapService` and verified in `AccessPolicy` via the constant `INTERNAL_ORG_CODE`. This code grants MANAGER users scoped to the internal organisation full cross-tenant case visibility.
+
+**Spoofing Prevention**: The `organisations` table (`V2__auth_schema.sql`) declares `code VARCHAR(50) NOT NULL UNIQUE`, enforcing a database-level uniqueness constraint. An attacker cannot create a second organisation with code `ORG_INTERNAL` because the `INSERT` would violate the `UNIQUE` constraint. Additionally:
+- Organisation records are created exclusively by `DataBootstrapService` (server-side, not via any user-facing API endpoint).
+- No API endpoint exposes organisation creation or code modification.
+- The organisation code is never accepted from client input; it is resolved server-side from the authenticated principal's persisted organisation record.
 

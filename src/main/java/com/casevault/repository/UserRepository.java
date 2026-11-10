@@ -16,6 +16,7 @@ public interface UserRepository extends JpaRepository<User, String> {
     Optional<User> findByUsername(String username);
     Optional<User> findByEmail(String email);
     long countByRole(Role role);
+    java.util.List<User> findByRoleAndEnabledTrue(Role role);
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("UPDATE User u SET u.failedLoginAttempts = u.failedLoginAttempts + 1, u.updatedAt = :now WHERE u.id = :userId")

@@ -9,4 +9,14 @@
     <Match>
         <Bug pattern="SPRING_ENDPOINT"/>
     </Match>
+
+    <!--
+      EI_EXPOSE_REP2: False positive on Spring MVC / REST Controller dependency injection.
+      Spring singleton beans (services) injected into controllers via constructor injection are managed
+      by Spring IoC and never exposed externally. See docs/assurance/static-analysis-exclusions.md.
+    -->
+    <Match>
+        <Class name="~com\.casevault\.controller\..*"/>
+        <Bug pattern="EI_EXPOSE_REP2"/>
+    </Match>
 </FindBugsFilter>

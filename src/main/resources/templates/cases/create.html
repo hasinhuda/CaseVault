@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head th:replace="~{layout :: htmlhead('Report New Incident')}">
+    <title>Report Incident - CaseVault</title>
+</head>
+<body>
+<a href="#main-content" class="skip-link">Skip to main content</a>
+
+<div th:replace="~{layout :: appheader}"></div>
+
+<div class="app-shell">
+    <aside th:replace="~{layout :: appsidebar('new-case')}"></aside>
+
+    <main id="main-content" class="content-wrapper">
+        <div class="page-header">
+            <div>
+                <h1>Report Security Incident</h1>
+                <p class="page-subtitle">Submit initial incident notification for consultancy investigator triage (FR-04)</p>
+            </div>
+        </div>
+
+        <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}" role="alert" aria-live="polite"></div>
+
+        <div class="card form-card-max">
+            <form th:action="@{/cases}" method="post">
+                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+
+                <div class="form-group">
+                    <label for="case-title">Incident Title</label>
+                    <input type="text" id="case-title" name="title" class="form-control" required maxlength="200"
+                           placeholder="e.g. Suspected ransomware activity on finance database host"/>
+                </div>
+
+                <div class="form-group">
+                    <label for="case-category">Incident Category</label>
+                    <select id="case-category" name="category" class="form-control" required>
+                        <option value="">-- Select Category --</option>
+                        <option value="RANSOMWARE">Ransomware</option>
+                        <option value="DATA_EXFILTRATION">Data Exfiltration</option>
+                        <option value="PHISHING">Phishing Campaign</option>
+                        <option value="INSIDER_THREAT">Insider Threat</option>
+                        <option value="OTHER">Other Security Incident</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="case-severity">Initial Severity Assessment</label>
+                    <select id="case-severity" name="severity" class="form-control" required>
+                        <option value="">-- Select Severity --</option>
+                        <option value="LOW">Low - Minimal operational impact</option>
+                        <option value="MEDIUM">Medium - Non-critical service impaired</option>
+                        <option value="HIGH">High - Significant business disruption</option>
+                        <option value="CRITICAL">Critical - Imminent data loss or total outage</option>
+                    </select>
+                </div>
+
+                <div class="mt-16">
+                    <button type="submit" class="btn btn-primary">Submit Incident Report</button>
+                    <a th:href="@{/cases}" class="btn btn-secondary ml-8">Cancel</a>
+                </div>
+            </form>
+        </div>
+    </main>
+</div>
+
+<div th:replace="~{layout :: appfooter}"></div>
+</body>
+</html>
