@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<FindBugsFilter>
+    <!--
+      SPRING_ENDPOINT is an informational FindSecBugs reminder emitted for EVERY Spring MVC mapping (not a vulnerability).
+      It is suppressed globally. Authorisation of each endpoint is NOT proven by SpotBugs; it is proven by the
+      authorisation tests (Phase 3: AuthorisationOperationMatrixTest, IDOR tests). Do not add further exclusions without
+      a reason recorded in docs/assurance/.
+    -->
+    <Match>
+        <Bug pattern="SPRING_ENDPOINT"/>
+    </Match>
+</FindBugsFilter>
