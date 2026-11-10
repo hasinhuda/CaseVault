@@ -53,12 +53,12 @@ public class PostgresFlywayMigrationTest {
     private UserRepository userRepository;
 
     @Test
-    @DisplayName("SEC-DB-001: Flyway V1 and V2 migrations execute successfully on real PostgreSQL container")
+    @DisplayName("SEC-DB-001: Flyway V1, V2, and V3 migrations execute successfully on real PostgreSQL container")
     void testFlywayMigrationsOnRealPostgreSql() {
         assertNotNull(flyway, "Flyway bean must be configured");
 
         MigrationInfo[] applied = flyway.info().applied();
-        assertEquals(2, applied.length, "Both V1 and V2 migrations must be applied to PostgreSQL");
+        assertEquals(3, applied.length, "V1, V2, and V3 migrations must be applied to PostgreSQL");
 
         assertEquals("1", applied[0].getVersion().getVersion());
         assertEquals("baseline", applied[0].getDescription());
@@ -67,6 +67,10 @@ public class PostgresFlywayMigrationTest {
         assertEquals("2", applied[1].getVersion().getVersion());
         assertEquals("auth schema", applied[1].getDescription());
         assertEquals(MigrationState.SUCCESS, applied[1].getState());
+
+        assertEquals("3", applied[2].getVersion().getVersion());
+        assertEquals("cases and evidence schema", applied[2].getDescription());
+        assertEquals(MigrationState.SUCCESS, applied[2].getState());
     }
 
     @Test
