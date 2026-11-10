@@ -19,6 +19,7 @@ public class CaseVaultUserPrincipal implements UserDetails {
     private final String passwordHash;
     private final Role role;
     private final String organisationId;
+    private final String organisationCode;
     private final boolean enabled;
     private final boolean accountNonLocked;
 
@@ -28,6 +29,7 @@ public class CaseVaultUserPrincipal implements UserDetails {
         this.passwordHash = user.getPasswordHash();
         this.role = user.getRole();
         this.organisationId = user.getOrganisation() != null ? user.getOrganisation().getId() : null;
+        this.organisationCode = user.getOrganisation() != null ? user.getOrganisation().getCode() : null;
         this.enabled = user.isEnabled();
         this.accountNonLocked = !user.isAccountLocked(now != null ? now : Instant.now());
     }
@@ -38,6 +40,10 @@ public class CaseVaultUserPrincipal implements UserDetails {
 
     public String getOrganisationId() {
         return organisationId;
+    }
+
+    public String getOrganisationCode() {
+        return organisationCode;
     }
 
     public Role getRole() {

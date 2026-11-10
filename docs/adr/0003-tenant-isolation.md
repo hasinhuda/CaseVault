@@ -40,3 +40,24 @@ CaseVault hosts cases and evidence for competing client organisations. Cross-ten
 - **ASVS 5.0**:
   - V4 Access Control (V4.1.1, V4.1.2, V4.1.3 [VERIFY MANUALLY])
 
+---
+
+## Amendment: Staff Scope & Consultancy Multi-Tenancy (Phase 3)
+
+### Context & Gap Analysis
+In the initial tenant model, `AccessPolicy` required `caller.organisationId == targetEntity.organisationId` uniformly across all roles. Because internal consultancy staff (analysts and managers) reside in the internal consultancy organisation (`code = ORG_INTERNAL`), this strict restriction prevented consultancy investigators from accessing the client-organisation cases they were contracted to investigate and manage.
+
+### Amended Decision
+1. **CLIENT Scope**:
+   - Confined strictly to cases and evidence where `case.organisation_id == caller.organisationId`.
+2. **ANALYST Scope**:
+   - Confined strictly to cases where `case.assigned_analyst_id == caller.userId`, irrespective of the case's client organization. Unassigned cases, even within the same consultancy or client organization, return HTTP 404.
+3. **MANAGER Scope**:
+   - If the caller belongs to the internal staff consultancy organization (identified deterministically by organisation code `ORG_INTERNAL` via server configuration, never from client input), the manager can view and manage all client cases across the tenancy.
+   - If a manager belongs to a client organisation, they remain strictly restricted to their own organisation's cases (`case.organisation_id == caller.organisationId`) and receive HTTP 404 for any other organization's cases.
+4. **AUDITOR_ADMIN Scope**:
+   - Retains strict zero-access to case and evidence content (returns HTTP 404).
+5. **Case Creation Restriction (FR-04)**:
+   - Case creation (`POST /api/cases`) is restricted strictly to users with the `CLIENT` role. Managers and analysts do not create cases on behalf of clients via this endpoint.
+
+
