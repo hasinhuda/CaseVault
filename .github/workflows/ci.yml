@@ -19,7 +19,7 @@ permissions:
 jobs:
   build-test-coverage:
     name: Build, Test & Quality Gates
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Check out repository
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -57,7 +57,7 @@ jobs:
 
   codeql-sast:
     name: CodeQL SAST Analysis
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       security-events: write
       actions: read
@@ -90,7 +90,7 @@ jobs:
 
   dependency-review-sbom:
     name: Dependency Review & SBOM Generation
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
       pull-requests: read
@@ -127,7 +127,7 @@ jobs:
 
   gitleaks:
     name: Gitleaks Secret Detection
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Check out repository with full history
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -141,7 +141,7 @@ jobs:
 
   container-build-lint-scan:
     name: Container Build, Hadolint & Trivy
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Check out repository
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -156,8 +156,10 @@ jobs:
         run: |
           docker build -t casevault:latest .
 
+      # Pinned by full commit SHA because mutable tags were force-pushed during the March 2026 compromise.
+      # v0.36.0 pins setup-trivy by SHA 3fb12ec12f41e471780db15c232d5dd185dcb514 (v0.2.6, safe release).
       - name: Run Trivy Container Vulnerability Scanner
-        uses: aquasecurity/trivy-action@6c175e9c4083a92bbca2f9724c8a5e33bc2d97a5 # v0.30.0
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           image-ref: 'casevault:latest'
           format: 'table'
@@ -167,7 +169,7 @@ jobs:
 
   dast-zap:
     name: Dynamic Application Security Testing (DAST)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     if: vars.CASEVAULT_ENABLE_DAST == 'true'
     needs: [container-build-lint-scan]
     steps:
