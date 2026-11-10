@@ -60,6 +60,12 @@ public class AuthorisationOperationMatrixTest {
     private EvidenceRepository evidenceRepository;
 
     @Autowired
+    private com.casevault.repository.CaseNoteRepository caseNoteRepository;
+
+    @Autowired
+    private com.casevault.repository.RemediationActionRepository remediationActionRepository;
+
+    @Autowired
     private ObjectMapper objectMapper;
 
     private Organisation orgInternal;
@@ -82,6 +88,8 @@ public class AuthorisationOperationMatrixTest {
 
     @BeforeEach
     void setUp() {
+        remediationActionRepository.deleteAll();
+        caseNoteRepository.deleteAll();
         evidenceRepository.deleteAll();
         caseRepository.deleteAll();
 

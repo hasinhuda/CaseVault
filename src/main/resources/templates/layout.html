@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head th:fragment="htmlhead(pageTitle)">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="${pageTitle != null ? pageTitle + ' - CaseVault' : 'CaseVault Secure IR'}">CaseVault</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}"/>
+</head>
+<body>
+
+<header th:fragment="appheader" class="app-header">
+    <div class="brand">
+        <a th:href="@{/dashboard}">CaseVault</a>
+        <span class="env-tag">Secure IR</span>
+    </div>
+    <div class="user-profile">
+        <span class="layout-header-org" th:if="${organisationCode != null}" th:text="'[' + ${organisationCode} + ']'">[ORG]</span>
+        <span th:text="${username}">user</span>
+        <span class="badge-role" th:text="${role}">ROLE</span>
+        <form th:action="@{/logout}" method="post">
+            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+            <button type="submit" class="btn btn-secondary btn-sm">Sign Out</button>
+        </form>
+    </div>
+</header>
+
+<aside th:fragment="appsidebar(activeMenu)" class="app-sidebar" aria-label="Sidebar Navigation">
+    <div class="sidebar-heading">Navigation</div>
+    <nav>
+        <a th:href="@{/dashboard}" th:class="${activeMenu == 'dashboard' ? 'sidebar-link active' : 'sidebar-link'}">
+            Dashboard
+        </a>
+        <a th:if="${role != 'AUDITOR_ADMIN'}" th:href="@{/cases}" th:class="${activeMenu == 'cases' ? 'sidebar-link active' : 'sidebar-link'}">
+            Cases
+        </a>
+        <span th:if="${role == 'AUDITOR_ADMIN'}" class="sidebar-restricted-tag" aria-disabled="true">
+            Cases (Quarantined)
+        </span>
+        <a th:if="${role == 'CLIENT'}" th:href="@{/cases/new}" th:class="${activeMenu == 'new-case' ? 'sidebar-link active' : 'sidebar-link'}">
+            Report Incident
+        </a>
+    </nav>
+</aside>
+
+<footer th:fragment="appfooter" class="app-footer">
+    CaseVault Incident Response &bull; Confidential &bull; Tamper-Evident Evidence Platform
+</footer>
+
+</body>
+</html>
+

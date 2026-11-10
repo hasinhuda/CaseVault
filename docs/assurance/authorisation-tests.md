@@ -54,4 +54,58 @@ This document provides assurance evidence for the tenant-aware, role-based autho
 
 ## 4. Residual Risk & Manual Verification Notes
 - **Standards Mapping**: OWASP Top 10:2025 A01 [VERIFY MANUALLY], CWE-284, CWE-285, CWE-639, ASVS 5.0 V4.1 [VERIFY MANUALLY].
-- **UI & Workflow Scope**: Full case status transition workflows, four-eyes report approval rules (SR-06), and Thymeleaf UI views are deferred to Phase 4. Minimal REST endpoints implemented in Phase 3 serve to prove and gate backend authorization logic.
+- **UI & Workflow Scope**: Phase 4 implements case status workflow, notes, remediation actions, assignment, search/filter, and the Thymeleaf UI shell. Four-eyes report approval rules (SR-06) are deferred to a later phase.
+
+---
+
+## 5. Phase 4: Case Workflow & UI Shell — Test Mapping
+
+### 5.1 Security Claims to Test ID Mapping
+
+| Security Claim / Requirement | Test ID | Verification Artifact | Result |
+| :--- | :--- | :--- | :--- |
+| **FR-06: FSM Lifecycle Transitions** — valid transitions succeed; invalid transitions return HTTP 400 | `SEC-CASE-01` | [CaseWorkflowSecurityTest.java](../../src/test/java/com/casevault/cases/CaseWorkflowSecurityTest.java) | PASS |
+| **FR-06: Role-Based Status Transition Restrictions** — CLIENT cannot change status; ANALYST limited to ASSIGNED→IN_PROGRESS, IN_PROGRESS→PENDING_REVIEW | `SEC-CASE-02` | [CaseWorkflowSecurityTest.java](../../src/test/java/com/casevault/cases/CaseWorkflowSecurityTest.java) | PASS |
+| **FR-05: Analyst Assignment Authorization** — only MANAGER may assign; target must be ANALYST role; CLIENT/ANALYST denied | `SEC-CASE-03` | [CaseWorkflowSecurityTest.java](../../src/test/java/com/casevault/cases/CaseWorkflowSecurityTest.java) | PASS |
+| **FR-07: Investigation Notes Permissions & Cross-Tenant IDOR** — ANALYST/MANAGER add notes; CLIENT cannot add; cross-tenant returns 404 | `SEC-CASE-04` | [CaseWorkflowSecurityTest.java](../../src/test/java/com/casevault/cases/CaseWorkflowSecurityTest.java) | PASS |
+| **FR-07: Remediation Actions Permissions & Cross-Tenant IDOR** — ANALYST/MANAGER add/update; CLIENT cannot modify; cross-tenant returns 404 | `SEC-CASE-05` | [CaseWorkflowSecurityTest.java](../../src/test/java/com/casevault/cases/CaseWorkflowSecurityTest.java) | PASS |
+| **SR-01: Mass Assignment Protection** — server overrides client claims for organisationId, status, owner, assignedAnalyst | `SEC-CASE-06` | [CaseWorkflowSecurityTest.java](../../src/test/java/com/casevault/cases/CaseWorkflowSecurityTest.java) | PASS |
+| **FR-10 / SR-10: LIKE Wildcard Escaping** in q query parameter | `SEC-CASE-07` | [CaseSearchAndUiSecurityTest.java](../../src/test/java/com/casevault/cases/CaseSearchAndUiSecurityTest.java) | PASS |
+| **SR-10: SQL Injection Safety** across search parameters | `SEC-CASE-08` | [CaseSearchAndUiSecurityTest.java](../../src/test/java/com/casevault/cases/CaseSearchAndUiSecurityTest.java) | PASS |
+| **FR-10: Capped Pagination (max 50) & Sort Field Allow-List** | `SEC-CASE-09` | [CaseSearchAndUiSecurityTest.java](../../src/test/java/com/casevault/cases/CaseSearchAndUiSecurityTest.java) | PASS |
+| **SR-02: Strict Tenant Boundaries in Case Search** — cross-tenant cases excluded from results | `SEC-CASE-10` | [CaseSearchAndUiSecurityTest.java](../../src/test/java/com/casevault/cases/CaseSearchAndUiSecurityTest.java) | PASS |
+| **SR-07: AUDITOR_ADMIN Web Route Boundary** — returns 404 on `/cases/**` | `SEC-CASE-11` | [CaseSearchAndUiSecurityTest.java](../../src/test/java/com/casevault/cases/CaseSearchAndUiSecurityTest.java) | PASS |
+| **SR-08: HTML Output Encoding / XSS Prevention** — Thymeleaf `th:text` escapes `<script>` payloads | `SEC-CASE-12` | [CaseSearchAndUiSecurityTest.java](../../src/test/java/com/casevault/cases/CaseSearchAndUiSecurityTest.java) | PASS |
+| **SR-08 / SR-09: Template Scanner** — zero `th:utext`, `innerHTML`, inline scripts/styles across all templates | `SEC-CASE-13` | [CaseSearchAndUiSecurityTest.java](../../src/test/java/com/casevault/cases/CaseSearchAndUiSecurityTest.java) | PASS |
+| **FUNC-CASE-01: Full Case Investigation Lifecycle** — create → assign → status transitions → notes → actions | `FUNC-CASE-01` | [CaseWorkflowSecurityTest.java](../../src/test/java/com/casevault/cases/CaseWorkflowSecurityTest.java) | PASS |
+| **FUNC-CASE-02: Client Incident Reporting Web UI Workflow** | `FUNC-CASE-02` | [CaseSearchAndUiSecurityTest.java](../../src/test/java/com/casevault/cases/CaseSearchAndUiSecurityTest.java) | PASS |
+
+### 5.2 Phase 4 Endpoint & Page Access Matrix
+
+| Role | Endpoint / Page | Permitted Scope | Denied Response |
+| :--- | :--- | :--- | :--- |
+| **CLIENT** | `GET /cases` | Own organisation's cases (list + search) | N/A (scoped) |
+| **CLIENT** | `GET /cases/new` | Create case form | N/A |
+| **CLIENT** | `POST /cases` | Create case (own org, server-derived status/owner) | N/A |
+| **CLIENT** | `GET /cases/{id}` | Own organisation's cases only | HTTP 404 (cross-tenant) |
+| **CLIENT** | `POST /cases/{id}/status` | None | HTTP 403 Forbidden |
+| **CLIENT** | `POST /cases/{id}/assign` | None | HTTP 403 Forbidden |
+| **CLIENT** | `POST /cases/{id}/notes` | None | HTTP 403 Forbidden |
+| **CLIENT** | `POST /cases/{id}/actions` | None | HTTP 403 Forbidden |
+| **ANALYST** | `GET /cases` | Assigned cases only | N/A (scoped) |
+| **ANALYST** | `GET /cases/new` | None | HTTP 403 Forbidden |
+| **ANALYST** | `GET /cases/{id}` | Assigned cases only | HTTP 404 (unassigned) |
+| **ANALYST** | `POST /cases/{id}/status` | ASSIGNED→IN_PROGRESS, IN_PROGRESS→PENDING_REVIEW | HTTP 403 (other transitions) |
+| **ANALYST** | `POST /cases/{id}/assign` | None | HTTP 403 Forbidden |
+| **ANALYST** | `POST /cases/{id}/notes` | Assigned cases only | HTTP 404 (unassigned) |
+| **ANALYST** | `POST /cases/{id}/actions` | Assigned cases only | HTTP 404 (unassigned) |
+| **MANAGER (ORG_INTERNAL)** | `GET /cases` | All cases across all client organisations | N/A |
+| **MANAGER (ORG_INTERNAL)** | `GET /cases/{id}` | All cases | HTTP 404 (non-existent) |
+| **MANAGER (ORG_INTERNAL)** | `POST /cases/{id}/status` | All valid FSM transitions | HTTP 400 (invalid) |
+| **MANAGER (ORG_INTERNAL)** | `POST /cases/{id}/assign` | Assign ANALYST role users to any case | HTTP 400 (non-analyst) |
+| **MANAGER (ORG_INTERNAL)** | `POST /cases/{id}/notes` | All accessible cases | N/A |
+| **MANAGER (ORG_INTERNAL)** | `POST /cases/{id}/actions` | All accessible cases | N/A |
+| **MANAGER (Client Org)** | `GET /cases/{id}` | Own client org cases only | HTTP 404 (cross-tenant) |
+| **AUDITOR_ADMIN** | `GET /cases`, `GET /cases/**` | None | HTTP 404 |
+| **AUDITOR_ADMIN** | `GET /dashboard` | Placeholder cards only (no case data) | N/A |
+

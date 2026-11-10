@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head th:replace="~{layout :: htmlhead('Incident Cases')}">
+    <title>Incident Cases - CaseVault</title>
+</head>
+<body>
+<a href="#main-content" class="skip-link">Skip to main content</a>
+
+<div th:replace="~{layout :: appheader}"></div>
+
+<div class="app-shell">
+    <aside th:replace="~{layout :: appsidebar('cases')}"></aside>
+
+    <main id="main-content" class="content-wrapper">
+        <div class="page-header">
+            <div>
+                <h1>Incident Cases</h1>
+                <p class="page-subtitle">Tenancy-scoped incident tracking and forensic investigation queue</p>
+            </div>
+            <div th:if="${role == 'CLIENT'}">
+                <a th:href="@{/cases/new}" class="btn btn-primary">Report Incident</a>
+            </div>
+        </div>
+
+        <div th:if="${successMessage}" class="alert alert-success" th:text="${successMessage}" role="status" aria-live="polite"></div>
+        <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}" role="alert" aria-live="polite"></div>
+
+        <!-- Filter Bar -->
+        <div class="filter-bar">
+            <form th:action="@{/cases}" method="get">
+                <div class="filter-item">
+                    <label for="filter-q">Search Query</label>
+                    <input type="text" id="filter-q" name="q" th:value="${searchRequest.q}" placeholder="Title search..." class="form-control"/>
+                </div>
+
+                <div class="filter-item">
+                    <label for="filter-status">Status</label>
+                    <select id="filter-status" name="status" class="form-control">
+                        <option value="">All Statuses</option>
+                        <option value="OPEN" th:selected="${searchRequest.status == 'OPEN'}">OPEN</option>
+                        <option value="ASSIGNED" th:selected="${searchRequest.status == 'ASSIGNED'}">ASSIGNED</option>
+                        <option value="IN_PROGRESS" th:selected="${searchRequest.status == 'IN_PROGRESS'}">IN_PROGRESS</option>
+                        <option value="PENDING_REVIEW" th:selected="${searchRequest.status == 'PENDING_REVIEW'}">PENDING_REVIEW</option>
+                        <option value="CLOSED" th:selected="${searchRequest.status == 'CLOSED'}">CLOSED</option>
+                    </select>
+                </div>
+
+                <div class="filter-item">
+                    <label for="filter-severity">Severity</label>
+                    <select id="filter-severity" name="severity" class="form-control">
+                        <option value="">All Severities</option>
+                        <option value="LOW" th:selected="${searchRequest.severity == 'LOW'}">LOW</option>
+                        <option value="MEDIUM" th:selected="${searchRequest.severity == 'MEDIUM'}">MEDIUM</option>
+                        <option value="HIGH" th:selected="${searchRequest.severity == 'HIGH'}">HIGH</option>
+                        <option value="CRITICAL" th:selected="${searchRequest.severity == 'CRITICAL'}">CRITICAL</option>
+                    </select>
+                </div>
+
+                <div class="filter-item">
+                    <label for="filter-category">Category</label>
+                    <select id="filter-category" name="category" class="form-control">
+                        <option value="">All Categories</option>
+                        <option value="RANSOMWARE" th:selected="${searchRequest.category == 'RANSOMWARE'}">RANSOMWARE</option>
+                        <option value="DATA_EXFILTRATION" th:selected="${searchRequest.category == 'DATA_EXFILTRATION'}">DATA_EXFILTRATION</option>
+                        <option value="PHISHING" th:selected="${searchRequest.category == 'PHISHING'}">PHISHING</option>
+                        <option value="INSIDER_THREAT" th:selected="${searchRequest.category == 'INSIDER_THREAT'}">INSIDER_THREAT</option>
+                        <option value="OTHER" th:selected="${searchRequest.category == 'OTHER'}">OTHER</option>
+                    </select>
+                </div>
+
+                <div>
+                    <button type="submit" class="btn btn-primary btn-sm">Filter</button>
+                    <a th:href="@{/cases}" class="btn btn-secondary btn-sm ml-8">Clear</a>
+                </div>
+            </form>
+        </div>
+
+        <!-- Cases Table -->
+        <div class="card">
+            <div th:if="${casesPage.totalElements > 0}" class="table-responsive">
+                <table class="data-table">
+                    <thead>
+                    <tr>
+                        <th scope="col">Title</th>
+                        <th scope="col">Category</th>
+                        <th scope="col">Severity</th>
+                        <th scope="col">Status</th>
+                        <th scope="col">Assigned Analyst</th>
+                        <th scope="col">Created Date</th>
+                        <th scope="col">Action</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr th:each="c : ${casesPage.content}">
+                        <td>
+                            <a th:href="@{/cases/{id}(id=${c.id})}" th:text="${c.title}" class="table-link">Case Title</a>
+                        </td>
+                        <td th:text="${c.category}">Category</td>
+                        <td>
+                            <span th:if="${c.severity == 'LOW'}" class="badge badge-severity-low">LOW</span>
+                            <span th:if="${c.severity == 'MEDIUM'}" class="badge badge-severity-medium">MEDIUM</span>
+                            <span th:if="${c.severity == 'HIGH'}" class="badge badge-severity-high">HIGH</span>
+                            <span th:if="${c.severity == 'CRITICAL'}" class="badge badge-severity-critical">CRITICAL</span>
+                        </td>
+                        <td>
+                            <span th:if="${c.status == 'OPEN'}" class="badge badge-status-open">OPEN</span>
+                            <span th:if="${c.status == 'ASSIGNED'}" class="badge badge-status-assigned">ASSIGNED</span>
+                            <span th:if="${c.status == 'IN_PROGRESS'}" class="badge badge-status-in_progress">IN PROGRESS</span>
+                            <span th:if="${c.status == 'PENDING_REVIEW'}" class="badge badge-status-pending_review">PENDING REVIEW</span>
+                            <span th:if="${c.status == 'CLOSED'}" class="badge badge-status-closed">CLOSED</span>
+                        </td>
+                        <td th:text="${c.assignedAnalystUsername != null ? c.assignedAnalystUsername : 'Unassigned'}">Unassigned</td>
+                        <td th:text="${c.createdAt}">Date</td>
+                        <td>
+                            <a th:href="@{/cases/{id}(id=${c.id})}" class="btn btn-secondary btn-sm">View</a>
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
+
+                <!-- Pagination -->
+                <div class="pagination">
+                    <span th:text="'Page ' + (${casesPage.number} + 1) + ' of ' + ${casesPage.totalPages} + ' (' + ${casesPage.totalElements} + ' total records)'">Page 1 of 1</span>
+                    <div class="pagination-controls">
+                        <a th:if="${casesPage.hasPrevious()}"
+                           th:href="@{/cases(page=${casesPage.number - 1}, size=${searchRequest.size}, q=${searchRequest.q}, status=${searchRequest.status}, severity=${searchRequest.severity}, category=${searchRequest.category})}"
+                           class="btn btn-secondary btn-sm">Previous</a>
+                        <a th:if="${casesPage.hasNext()}"
+                           th:href="@{/cases(page=${casesPage.number + 1}, size=${searchRequest.size}, q=${searchRequest.q}, status=${searchRequest.status}, severity=${searchRequest.severity}, category=${searchRequest.category})}"
+                           class="btn btn-secondary btn-sm">Next</a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Empty State -->
+            <div th:if="${casesPage.totalElements == 0}" class="empty-state">
+                <h3>No incident cases found</h3>
+                <p>No cases match your search criteria or permission scope.</p>
+                <div th:if="${role == 'CLIENT'}" class="mt-16">
+                    <a th:href="@{/cases/new}" class="btn btn-primary">Report an Incident</a>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<div th:replace="~{layout :: appfooter}"></div>
+</body>
+</html>

@@ -20,3 +20,14 @@ This backlog tracks identified technical debt, deferred security enhancements, a
    - **Current Configuration**: `SecurityConfig` employs `AntPathRequestMatcher.antMatcher("/api/**")` within `DelegatingAuthenticationEntryPoint` to route unauthenticated API requests to `HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)`.
    - **Status**: In Spring Security 6.5.x, `AntPathRequestMatcher` is marked `@Deprecated(forRemoval = true)`. The emerging replacement is `PathPatternRequestMatcher` (`org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher.withDefaults().matcher("/api/**")`).
    - **Deferred Action**: To avoid regressions or behavioral mismatches during Phase 3 authorisation baseline stabilization, `AntPathRequestMatcher` is intentionally retained. Migration to `PathPatternRequestMatcher` is scheduled for refactoring alongside Spring Boot 3.5.x patch upgrades before Phase 6 production hardening.
+
+## Phase 4 Case Workflow & UI Technical Debt
+
+3. **`remediation_actions` Schema Missing `title` and `target_date` Columns (FR-07)**:
+   - **Current State**: FR-07 specifies "title, target date, and completion status" for remediation actions. The V4 migration only has `description`, `status`, and `created_at`. The `title` and `target_date` columns are absent.
+   - **Impact**: Minimal for the current workflow phase; `description` serves as a combined title/description field. A future migration should add `title VARCHAR(200)` and `target_date TIMESTAMP NULL` if the full FR-07 specification is required.
+   - **Deferred Action**: Add columns via a new Flyway migration (V5 or later) when the full remediation tracking UI is implemented.
+
+4. **CLIENT Read Access to Notes and Remediation Actions (FR-07 Clarification)**:
+   - **Current State**: FR-07 states notes and actions are authored by ANALYST and MANAGER. Whether CLIENTs may _read_ notes and actions on their own cases is not explicitly stated. The current implementation blocks CLIENT from reading notes and actions (they can only see the case overview).
+   - **Deferred Action**: VERIFY MANUALLY with product owner whether CLIENT should have read-only access to case notes and remediation actions. If yes, update `CaseWebController` to show read-only tabs.

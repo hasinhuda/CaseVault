@@ -39,6 +39,7 @@ public class AuthController {
             model.addAttribute("username", principal.getUsername());
             model.addAttribute("role", principal.getRole().name());
             model.addAttribute("organisationId", principal.getOrganisationId() != null ? principal.getOrganisationId() : "N/A");
+            model.addAttribute("organisationCode", principal.getOrganisationCode());
         }
         return "dashboard";
     }
