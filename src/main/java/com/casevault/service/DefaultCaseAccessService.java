@@ -251,6 +251,7 @@ public class DefaultCaseAccessService implements CaseAccessService {
         );
 
         Case saved = caseRepository.save(newCase);
+        auditEventRecorder.record(AuditEventType.CASE_CREATED, principal.getUserId(), saved.getId(), "CREATED");
         return CaseResponseDto.fromEntity(saved);
     }
 
@@ -287,6 +288,7 @@ public class DefaultCaseAccessService implements CaseAccessService {
 
         aCase.setStatus(targetStatus);
         Case saved = caseRepository.save(aCase);
+        auditEventRecorder.record(AuditEventType.CASE_UPDATED, principal.getUserId(), caseId, "STATUS_CHANGED");
         return CaseResponseDto.fromEntity(saved);
     }
 
@@ -313,6 +315,7 @@ public class DefaultCaseAccessService implements CaseAccessService {
         }
 
         Case saved = caseRepository.save(aCase);
+        auditEventRecorder.record(AuditEventType.CASE_ASSIGNED, principal.getUserId(), caseId, "ASSIGNED");
         return CaseResponseDto.fromEntity(saved);
     }
 
@@ -339,6 +342,7 @@ public class DefaultCaseAccessService implements CaseAccessService {
         );
 
         CaseNote saved = caseNoteRepository.save(note);
+        auditEventRecorder.record(AuditEventType.CASE_UPDATED, principal.getUserId(), caseId, "UPDATED");
         return CaseNoteResponseDto.fromEntity(saved);
     }
 
@@ -376,6 +380,7 @@ public class DefaultCaseAccessService implements CaseAccessService {
         );
 
         RemediationAction saved = remediationActionRepository.save(action);
+        auditEventRecorder.record(AuditEventType.CASE_UPDATED, principal.getUserId(), caseId, "UPDATED");
         return RemediationActionResponseDto.fromEntity(saved);
     }
 
@@ -401,6 +406,7 @@ public class DefaultCaseAccessService implements CaseAccessService {
 
         action.setStatus(dto.getStatus());
         RemediationAction saved = remediationActionRepository.save(action);
+        auditEventRecorder.record(AuditEventType.CASE_UPDATED, principal.getUserId(), caseId, "UPDATED");
         return RemediationActionResponseDto.fromEntity(saved);
     }
 
@@ -429,14 +435,14 @@ public class DefaultCaseAccessService implements CaseAccessService {
     @PreAuthorize("isAuthenticated()")
     public EvidenceResponseDto getEvidenceById(String evidenceId, CaseVaultUserPrincipal principal) {
         if (principal == null || principal.getRole() == Role.AUDITOR_ADMIN) {
-            throw new ResourceNotFoundException("Evidence not found");
+            throw maskedNotFound("Evidence not found", principal, null);
         }
 
         Evidence evidence = evidenceRepository.findById(evidenceId)
                 .orElseThrow(() -> new ResourceNotFoundException("Evidence not found"));
 
         if (!accessPolicy.canReadEvidence(principal, evidence)) {
-            throw new ResourceNotFoundException("Evidence not found");
+            throw maskedNotFound("Evidence not found", principal, evidence.getCase().getId());
         }
 
         return EvidenceResponseDto.fromEntity(evidence);
@@ -448,11 +454,11 @@ public class DefaultCaseAccessService implements CaseAccessService {
     public EvidenceResponseDto uploadEvidence(String caseId, MultipartFile file, CaseVaultUserPrincipal principal) {
         Case aCase = getAccessibleCaseEntity(caseId, principal);
         if (principal.getRole() != Role.CLIENT && principal.getRole() != Role.ANALYST) {
-            throw new ResourceNotFoundException("Case not found");
+            throw maskedNotFound("Case not found", principal, caseId);
         }
         if (principal.getRole() == Role.ANALYST
                 && (aCase.getAssignedAnalyst() == null || !Objects.equals(principal.getUserId(), aCase.getAssignedAnalyst().getId()))) {
-            throw new ResourceNotFoundException("Case not found");
+            throw maskedNotFound("Case not found", principal, caseId);
         }
         if ("CLOSED".equals(aCase.getStatus())) {
             throw new BadRequestException("Evidence cannot be uploaded to a closed case.");
@@ -495,7 +501,7 @@ public class DefaultCaseAccessService implements CaseAccessService {
         Evidence evidence = evidenceRepository.findById(evidenceId)
                 .orElseThrow(() -> new ResourceNotFoundException("Evidence not found"));
         if (!Objects.equals(evidence.getCase().getId(), aCase.getId()) || !accessPolicy.canReadEvidence(principal, evidence)) {
-            throw new ResourceNotFoundException("Evidence not found");
+            throw maskedNotFound("Evidence not found", principal, caseId);
         }
         byte[] plaintext;
         try {
@@ -520,16 +526,26 @@ public class DefaultCaseAccessService implements CaseAccessService {
         return (caseId + ":" + evidenceId).getBytes(java.nio.charset.StandardCharsets.UTF_8);
     }
 
+    /**
+     * Records ACCESS_DENIED (NOT_VISIBLE) for an object that is masked as 404, and returns the unchanged 404
+     * exception so the HTTP response stays exactly as before. Truly nonexistent objects are not recorded.
+     */
+    private ResourceNotFoundException maskedNotFound(String message, CaseVaultUserPrincipal principal, String caseId) {
+        auditEventRecorder.record(AuditEventType.ACCESS_DENIED,
+                principal == null ? null : principal.getUserId(), caseId, "NOT_VISIBLE");
+        return new ResourceNotFoundException(message);
+    }
+
     private Case getAccessibleCaseEntity(String caseId, CaseVaultUserPrincipal principal) {
         if (principal == null || principal.getRole() == Role.AUDITOR_ADMIN) {
-            throw new ResourceNotFoundException("Case not found");
+            throw maskedNotFound("Case not found", principal, caseId);
         }
 
         Case aCase = caseRepository.findById(caseId)
                 .orElseThrow(() -> new ResourceNotFoundException("Case not found"));
 
         if (!accessPolicy.canReadCase(principal, aCase)) {
-            throw new ResourceNotFoundException("Case not found");
+            throw maskedNotFound("Case not found", principal, caseId);
         }
 
         return aCase;

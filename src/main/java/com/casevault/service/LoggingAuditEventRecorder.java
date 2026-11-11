@@ -7,7 +7,7 @@ import org.springframework.stereotype.Component;
 
 /** Logs metadata only; this is deliberately not the Phase 6 cryptographic audit log. */
 @Component
-@ConditionalOnProperty(name = "casevault.audit.recorder", havingValue = "logging", matchIfMissing = true)
+@ConditionalOnProperty(name = "casevault.audit.recorder", havingValue = "logging")
 public class LoggingAuditEventRecorder implements AuditEventRecorder {
     private static final Logger LOGGER = LoggerFactory.getLogger(LoggingAuditEventRecorder.class);
 

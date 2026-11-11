@@ -47,3 +47,11 @@ This backlog tracks identified technical debt, deferred security enhancements, a
 - Create a production database role limited to INSERT and SELECT on `audit_events`; the PostgreSQL trigger can be dropped by the table owner.
 - Multi-node deployments: the append lock is in-process; design retry and ordering on unique `sequence_no` violations.
 - Windows key-file permissions are best effort: VERIFY MANUALLY.
+
+## Phase 6B audit wiring backlog (DRAFT)
+
+- Login-failure flooding grows `audit_events` without bound until Phase 8 rate limiting; there is no retention or archival for audit rows yet.
+- ADMIN_ACCOUNT_DISABLED, ADMIN_SESSION_REVOKED and REPORT_TRANSITION are defined event types but not wired (Phase 7); session revocation in `UserStatusEnforcementFilter` is not audited yet.
+- The AUDITOR_ADMIN audit view and chain verification page is Phase 6C.
+- A committed action can be unaudited if the append fails after commit (no retry queue or outbox).
+- HTTP Basic requests on `/api` record one LOGIN_SUCCESS per request; consider disabling Basic or sampling before production.

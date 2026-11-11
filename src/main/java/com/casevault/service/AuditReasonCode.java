@@ -15,6 +15,7 @@ public enum AuditReasonCode {
     ACCOUNT_DISABLED,
     ACCOUNT_LOCKED,
     NOT_PERMITTED,
+    NOT_VISIBLE,
     CREATED,
     UPDATED,
     ASSIGNED,

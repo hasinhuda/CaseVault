@@ -123,3 +123,12 @@ All Phase 5 evidence requirements (Groups A through G) verified. Phase 6 cryptog
 | FR-13 | `AuditChainTest` SEC-AUDIT-01..14; `AuditConcurrencyTest` SEC-AUDIT-15; `PostgresAuditChainTest` SEC-AUDIT-16..17. Service only: NOT yet wired into application flows (Phase 6B). Details: [audit-tests.md](assurance/audit-tests.md) |
 | SR-13 | `AuditChainTest` SEC-AUDIT-01, SEC-AUDIT-03..09; `ArchitectureTest` SEC-AUDIT-ARCH-01..05. Tail truncation is detectable only with an external anchor (SEC-AUDIT-08) |
 | SR-14 | `AuditConcurrencyTest` SEC-AUDIT-15 (8 threads x 25 appends, repeated 10 times); `AuditChainTest` SEC-AUDIT-11 and `PostgresAuditChainTest` SEC-AUDIT-16 (millisecond precision) |
+
+## Phase 6B: Audit Log Wiring (DRAFT)
+
+| Requirement | Evidence / tests |
+|---|---|
+| FR-13 | `AuditWiringTest` SEC-AUDIT-WIRE-01..11 (login, lockout, logout, access denied, case and evidence events recorded; chain valid after a mixed scenario). Admin and report events are NOT wired yet (Phase 7); no auditor UI yet (Phase 6C). Details: [audit-tests.md](assurance/audit-tests.md) |
+| SR-13 | `AuditWiringTest` SEC-AUDIT-WIRE-11 (chain verifies after real application events); `ArchitectureTest` SEC-AUDIT-ARCH-06 |
+| SR-15 | `AuditWiringTest` SEC-AUDIT-WIRE-12 (append failure shows the safe error page with a correlation id, no stack trace or exception text) |
+| SR-02 | `AuditWiringTest` SEC-AUDIT-WIRE-07 (cross-tenant request stays HTTP 404 and is recorded once as ACCESS_DENIED) |

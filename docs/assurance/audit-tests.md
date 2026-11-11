@@ -29,4 +29,28 @@ Scope: backend only. The audit log is built and tested as a service; it is NOT y
 
 Not covered: key and database in different trust domains, multi-node appends, an external anchoring job, a database role limited to INSERT and SELECT, and wiring into application flows (Phase 6B).
 
+## Phase 6B wiring tests (H2, real Spring context)
+
+Results from `.\mvnw.cmd -B verify`: 195 tests, 0 failures, 0 skipped, SpotBugs BugInstance size 0. Class: [AuditWiringTest.java](../../src/test/java/com/casevault/audit/AuditWiringTest.java).
+
+| Property | Test ID | Result |
+|---|---|---|
+| Successful login: exactly one LOGIN_SUCCESS with the user's UUID | SEC-AUDIT-WIRE-01 | PASS |
+| Wrong password, existing user: LOGIN_FAILURE with that UUID | SEC-AUDIT-WIRE-02 | PASS |
+| Unknown username: LOGIN_FAILURE with null user_id | SEC-AUDIT-WIRE-03 | PASS |
+| Five failures: five LOGIN_FAILURE plus one ACCOUNT_LOCKED; correct password while locked is LOGIN_FAILURE (also proves the double-invocation fix) | SEC-AUDIT-WIRE-04 | PASS |
+| Logout writes LOGOUT; logout without a session writes nothing | SEC-AUDIT-WIRE-05 | PASS |
+| No typed username, password or (distinctive) session id in audit columns or captured log lines | SEC-AUDIT-WIRE-06 | PASS (rotated session id checked only when 16+ characters, because Spring's mock sessions use short counter ids) |
+| Cross-tenant case request: HTTP 404 and exactly one ACCESS_DENIED NOT_VISIBLE; nonexistent id and unauthenticated request write no row | SEC-AUDIT-WIRE-07 | PASS |
+| HTTP 403 AccessDeniedException: exactly one ACCESS_DENIED NOT_PERMITTED | SEC-AUDIT-WIRE-08 | PASS |
+| Case create, assign, status change (and no event for an unchanged status) and note: one row each with the actor | SEC-AUDIT-WIRE-09 | PASS |
+| Evidence upload, rejected upload, download, tampered file, missing file: one row each | SEC-AUDIT-WIRE-10 | PASS |
+| Mixed scenario: chain valid, sequence 1..5 without gap, no file name, hash or stored name in rows, only allowed columns | SEC-AUDIT-WIRE-11 | PASS |
+| Append failure after commit: case stays committed, HTTP 500 safe error (JSON and HTML) with correlation id, ERROR log with the same id and no exception or message. Proves only the case-creation path; the same recorder code serves all outcome events | SEC-AUDIT-WIRE-12 | PASS |
+| Outcome events appended only after commit and dropped on rollback; attempt events survive rollback | SEC-AUDIT-WIRE-13 | PASS |
+| Chained recorder is the default bean | SEC-AUDIT-WIRE-14 | PASS |
+| Controllers, security and config use the recorder interface only | SEC-AUDIT-ARCH-06 | PASS |
+
+Not wired and therefore not tested: ADMIN_ACCOUNT_DISABLED, ADMIN_SESSION_REVOKED, REPORT_TRANSITION (Phase 7). The logging recorder as a selectable alternative is exercised by `EvidenceLogSecurityTest`, which selects it with `@TestPropertySource`.
+
 Existing test changed: `PostgresFlywayMigrationTest` (SEC-DB-001) now expects 7 applied migrations (V6 and the PostgreSQL-only V7 added). No assertion was removed or relaxed.

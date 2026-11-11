@@ -90,3 +90,37 @@ HMAC = `javax.crypto.Mac` `HmacSHA256` over those bytes, stored as 64 lower-case
 3. **Tail truncation**: deleting the newest rows, or deleting them and appending new events, leaves a chain that `verifyChain()` accepts. It is detectable only by comparing `currentHead()` with an externally stored copy (an anchor). No anchoring job exists yet. Test SEC-AUDIT-08 demonstrates both the limitation and the anchor detection.
 4. **DB-level immutability**: implemented for PostgreSQL only, as Flyway migration `db/migration-postgresql/V7__audit_events_immutable.sql`, loaded via `spring.flyway.locations=classpath:db/migration,classpath:db/migration-{vendor}`. A trigger rejects UPDATE, DELETE and TRUNCATE (test SEC-AUDIT-17 on a real PostgreSQL container). H2 (test/dev) has no trigger. The table owner or a superuser can still drop the trigger; in production the application role should additionally lose write rights (`REVOKE UPDATE, DELETE, TRUNCATE ON audit_events FROM <app_role>`). That role setup is NOT in the repository and is not tested.
 5. **Windows key permissions** are best effort only (VERIFY MANUALLY).
+
+## Phase 6B Wiring (as built)
+The chained recorder is now the default (`casevault.audit.recorder=chained`, also when the property is missing). `casevault.audit.recorder=logging` still selects the Phase 5 placeholder `LoggingAuditEventRecorder`.
+
+### Ordering decision: record AFTER the business transaction
+`ChainedAuditEventRecorder.record(...)` registers a transaction synchronisation when a transaction is active and appends only after it finished:
+- **Outcome events** (`LOGIN_SUCCESS`, `LOGOUT`, `CASE_CREATED`, `CASE_UPDATED`, `CASE_ASSIGNED`, `EVIDENCE_UPLOADED`, `EVIDENCE_DOWNLOADED`) are appended after COMMIT. A rolled-back action produces no event.
+- **Attempt events** (`LOGIN_FAILURE`, `ACCOUNT_LOCKED`, `ACCESS_DENIED`, `EVIDENCE_REJECTED`) are appended after completion whatever the outcome, because the attempt happened even though the surrounding transaction rolled back (for example the 404 for a cross-tenant case rolls back the read-only service transaction).
+- Outside a transaction the event is appended immediately.
+The append itself runs in its own `REQUIRES_NEW` transaction (Phase 6A), so it never joins the finished business transaction. Proven by SEC-AUDIT-WIRE-13.
+
+### Failure mode
+- Outcome event, append fails: the business change stays committed; an ERROR line with a fresh correlation id and nothing else is logged (no exception, no message); `AuditAppendFailedException` (extends `IllegalStateException`) reaches `GlobalExceptionHandler`, which shows the existing safe error page / JSON with that correlation id (HTTP 500). Proven by SEC-AUDIT-WIRE-12 for case creation (JSON and HTML).
+- Attempt event, append fails: ERROR line with correlation id only; the user already receives the failure, denial or 404, so nothing changes for them.
+- **Residual risk:** a committed action can be unaudited if the append fails (for example database outage between the two transactions). There is no retry queue or outbox.
+
+### What is recorded where
+| Event | Source | Notes |
+|---|---|---|
+| LOGIN_SUCCESS, LOGIN_FAILURE, ACCOUNT_LOCKED | `CaseVaultAuthenticationProvider` | `user_id` only if the account exists. Fixed reason codes: SUCCESS, BAD_CREDENTIALS, ACCOUNT_DISABLED, ACCOUNT_LOCKED. The fifth failure writes LOGIN_FAILURE and ACCOUNT_LOCKED. HTTP Basic requests on `/api` also authenticate through the provider, so each such request records LOGIN_SUCCESS. |
+| LOGOUT | logout success handler in `SecurityConfig` | only when an authenticated principal exists |
+| ACCESS_DENIED NOT_PERMITTED | `GlobalExceptionHandler` | every handled `AccessDeniedException` (HTTP 403 unchanged) |
+| ACCESS_DENIED NOT_VISIBLE | `DefaultCaseAccessService` | object exists but is masked as 404 (cross-tenant, AUDITOR_ADMIN, unassigned analyst); a nonexistent id is NOT recorded; HTTP 404 unchanged |
+| CASE_CREATED, CASE_ASSIGNED | `DefaultCaseAccessService` | |
+| CASE_UPDATED | `DefaultCaseAccessService` | status change (only when the status actually changes), notes, remediation actions |
+| EVIDENCE_* | `DefaultCaseAccessService` (existing calls) | once per event |
+Not wired (Phase 7): `ADMIN_ACCOUNT_DISABLED`, `ADMIN_SESSION_REVOKED`, `REPORT_TRANSITION` exist only as event types. The session revocation done by `UserStatusEnforcementFilter` is not audited yet. The auditor UI is Phase 6C.
+
+### Bug found and fixed while wiring
+`SecurityConfig` registered the authentication provider with `HttpSecurity` while Spring Boot also put the same bean into the global authentication manager. After a failed login the child manager asked its parent, so the provider ran TWICE per failed request: failed-login counters were incremented twice (accounts locked after about three attempts, not five) and each failure was audited twice. Fix: `.authenticationManager(new ProviderManager(authenticationProvider))` (no parent). Existing lockout tests did not catch it because they call the provider directly; SEC-AUDIT-WIRE-04 goes through the real login endpoint.
+
+### Additional residual risks
+- Login-failure flooding grows `audit_events` without bound until Phase 8 rate limiting; there is no retention or archival for audit rows.
+- The audit user id is the account UUID; typed usernames, passwords, tokens, session ids, IP addresses and user agents are never stored or logged by the audit path (SEC-AUDIT-WIRE-06).

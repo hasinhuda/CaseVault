@@ -82,6 +82,15 @@ class ArchitectureTest {
             .because("a stored audit row must never be modified by the application");
 
     @ArchTest
+    static final ArchRule controllersAndSecurityUseRecorderInterfaceOnly = noClasses()
+            .that().resideInAnyPackage("..controller..", "..security..", "..config..")
+            .should().dependOnClassesThat().haveSimpleNameStartingWith("AuditLogService")
+            .orShould().dependOnClassesThat().haveSimpleName("AuditEventRepository")
+            .orShould().dependOnClassesThat().haveSimpleName("ChainedAuditEventRecorder")
+            .as("SEC-AUDIT-ARCH-06: Controllers, security filters and config call AuditEventRecorder only")
+            .because("only the recorder interface may be used outside the audit service layer");
+
+    @ArchTest
     static final ArchRule controllersMustNotAccessEvidenceRepositoryOrStorage = noClasses()
             .that().resideInAPackage("..controller..")
             .should().dependOnClassesThat().haveNameMatching(".*(EvidenceRepository|EvidenceStorageService|EvidenceStore).*")

@@ -2,6 +2,8 @@ package com.casevault.security;
 
 import com.casevault.model.User;
 import com.casevault.repository.UserRepository;
+import com.casevault.service.AuditEventRecorder;
+import com.casevault.service.AuditEventType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.authentication.AuthenticationProvider;
@@ -28,10 +30,13 @@ public class CaseVaultAuthenticationProvider implements AuthenticationProvider {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final String dummyPasswordHash;
+    private final AuditEventRecorder auditEventRecorder;
 
-    public CaseVaultAuthenticationProvider(UserRepository userRepository, PasswordEncoder passwordEncoder) {
+    public CaseVaultAuthenticationProvider(UserRepository userRepository, PasswordEncoder passwordEncoder,
+                                           AuditEventRecorder auditEventRecorder) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
+        this.auditEventRecorder = auditEventRecorder;
         // Pre-compute dummy Argon2id hash for constant-ish timing defense on unknown users
         this.dummyPasswordHash = passwordEncoder.encode("CaseVaultDummySaltTimingHash123!");
     }
@@ -49,6 +54,8 @@ public class CaseVaultAuthenticationProvider implements AuthenticationProvider {
             // Constant-ish timing: evaluate dummy hash so execution time mirrors an existing user evaluation
             passwordEncoder.matches(rawPassword, dummyPasswordHash);
             logger.warn("Authentication failed: unknown username");
+            // No user id: the typed username is never stored or logged.
+            auditEventRecorder.record(AuditEventType.LOGIN_FAILURE, null, null, "BAD_CREDENTIALS");
             throw new BadCredentialsException(GENERIC_AUTH_ERROR);
         }
 
@@ -59,6 +66,7 @@ public class CaseVaultAuthenticationProvider implements AuthenticationProvider {
             // Equalize timing
             passwordEncoder.matches(rawPassword, user.getPasswordHash());
             logger.warn("Authentication rejected: user account is disabled");
+            auditEventRecorder.record(AuditEventType.LOGIN_FAILURE, user.getId(), null, "ACCOUNT_DISABLED");
             throw new BadCredentialsException(GENERIC_AUTH_ERROR);
         }
 
@@ -67,6 +75,7 @@ public class CaseVaultAuthenticationProvider implements AuthenticationProvider {
             // Equalize timing
             passwordEncoder.matches(rawPassword, user.getPasswordHash());
             logger.warn("Authentication rejected: user account is locked");
+            auditEventRecorder.record(AuditEventType.LOGIN_FAILURE, user.getId(), null, "ACCOUNT_LOCKED");
             throw new BadCredentialsException(GENERIC_AUTH_ERROR);
         }
 
@@ -79,9 +88,12 @@ public class CaseVaultAuthenticationProvider implements AuthenticationProvider {
                 Instant lockUntil = now.plus(LOCK_DURATION);
                 userRepository.lockUserAccount(user.getId(), newAttempts, lockUntil, now);
                 logger.warn("User account locked after excessive failed attempts");
+                auditEventRecorder.record(AuditEventType.LOGIN_FAILURE, user.getId(), null, "BAD_CREDENTIALS");
+                auditEventRecorder.record(AuditEventType.ACCOUNT_LOCKED, user.getId(), null, "ACCOUNT_LOCKED");
             } else {
                 userRepository.incrementFailedAttempts(user.getId(), now);
                 logger.warn("Incremented failed login count for user");
+                auditEventRecorder.record(AuditEventType.LOGIN_FAILURE, user.getId(), null, "BAD_CREDENTIALS");
             }
             throw new BadCredentialsException(GENERIC_AUTH_ERROR);
         }
@@ -93,6 +105,7 @@ public class CaseVaultAuthenticationProvider implements AuthenticationProvider {
 
         CaseVaultUserPrincipal principal = new CaseVaultUserPrincipal(user, now);
         logger.info("User successfully authenticated");
+        auditEventRecorder.record(AuditEventType.LOGIN_SUCCESS, user.getId(), null, "SUCCESS");
         return new UsernamePasswordAuthenticationToken(principal, null, principal.getAuthorities());
     }
 

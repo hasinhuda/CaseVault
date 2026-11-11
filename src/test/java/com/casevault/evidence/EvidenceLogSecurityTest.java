@@ -47,6 +47,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @SpringBootTest
+@org.springframework.test.context.TestPropertySource(properties = "casevault.audit.recorder=logging")
 public class EvidenceLogSecurityTest {
 
     private static final Pattern AUDIT_LINE_PATTERN = Pattern.compile(
