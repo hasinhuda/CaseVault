@@ -38,3 +38,12 @@ This backlog tracks identified technical debt, deferred security enhancements, a
 - Storage is local single-node filesystem storage; production needs resilient managed storage.
 - Retention and deletion workflows are not yet implemented.
 - The cryptographic audit chain remains pending for Phase 6; the current recorder logs minimal metadata only.
+
+## Phase 6A audit chain backlog (DRAFT)
+
+- Wire `ChainedAuditEventRecorder` (`casevault.audit.recorder=chained`) into login, cases, evidence and admin flows, decide record ordering relative to business commits, and add the AUDITOR_ADMIN verification view (Phase 6B).
+- Move the audit HMAC key out of the database's trust domain (secret manager or HSM); today it is a file beside the application.
+- Add an external anchoring job (periodic export of `currentHead()`); otherwise tail truncation is undetectable.
+- Create a production database role limited to INSERT and SELECT on `audit_events`; the PostgreSQL trigger can be dropped by the table owner.
+- Multi-node deployments: the append lock is in-process; design retry and ordering on unique `sequence_no` violations.
+- Windows key-file permissions are best effort: VERIFY MANUALLY.

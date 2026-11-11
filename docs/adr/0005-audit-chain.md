@@ -55,3 +55,38 @@ Per stack constraints and Hard Rule 10, custom cryptographic algorithms are proh
 - **ASVS 5.0**:
   - V7 Log and Audit Verification (V7.4.1, V7.4.2 [VERIFY MANUALLY])
   - V8 Data Protection (V8.3.1 [VERIFY MANUALLY])
+
+## Phase 6A Implementation (as built, backend only)
+Status: the audit chain is implemented and tested as a service. It is NOT yet wired into login, cases, evidence or admin flows (Phase 6B). By default the application still uses the Phase 5 `LoggingAuditEventRecorder`; `casevault.audit.recorder=chained` selects `ChainedAuditEventRecorder`.
+
+Deviations from the decision text above (the as-built behaviour wins):
+- **Lock**: an in-process fair `ReentrantLock` in `AuditLogService`, not `SELECT ... FOR UPDATE` or an advisory lock. The append runs in a `TransactionTemplate` with `PROPAGATION_REQUIRES_NEW`, so the row commits before the lock is released even if the caller already runs inside a transaction. The `UNIQUE (sequence_no)` constraint is the database-level backstop: a second node racing for the same number fails with a constraint violation instead of forking the chain.
+- **Key**: `.local-data/keys/audit-hmac.key` (property `casevault.audit.key-path`), 32 random bytes from `SecureRandom`, Base64 text, generated lazily on first use (never at startup). On POSIX it is created with owner read/write only. On Windows permissions are best effort: VERIFY MANUALLY. The key is never logged.
+- **Genesis**: the first event uses `prev_hash` = 64 times `0` (hex). The text seed mentioned above is not used.
+- **Stored data**: only the columns `id, sequence_no, event_type, user_id, case_id, reason_code, occurred_at, prev_hash, hmac`. There is no free-text payload and no tenant id; `user_id` is a UUID or null. Reason codes come from the whitelist enum `AuditReasonCode`; anything else is stored as `UNSPECIFIED`.
+
+### Canonical serialisation (HMAC input)
+Fixed field order, every field self-delimiting, so two different events cannot produce the same byte string. `str(s)` = int32 big-endian UTF-8 byte length followed by the bytes; `opt(s)` = byte `0`, or byte `1` followed by `str(s)`.
+1. `str("CVAUDIT1")` format tag
+2. int64 big-endian `sequence_no`
+3. `str(event_type)`
+4. `opt(user_id)` canonical lower-case UUID text
+5. `opt(case_id)`
+6. `str(reason_code)`
+7. int64 big-endian `occurred_at` as epoch milliseconds (`Instant.now().truncatedTo(ChronoUnit.MILLIS)`)
+8. `str(prev_hash)`
+
+HMAC = `javax.crypto.Mac` `HmacSHA256` over those bytes, stored as 64 lower-case hex characters. Comparisons use `MessageDigest.isEqual`. Sub-millisecond digits of a stored timestamp are ignored by verification (only epoch milliseconds are signed).
+
+### Verification
+`verifyChain()` reads in keyset pages (default 500) and checks, in order: sequence continuity (the missing number is reported as `SEQUENCE_GAP`), the `prev_hash` link (`LINK_MISMATCH`), the recomputed HMAC (`HMAC_MISMATCH`). It returns the first break. It detects changed fields, forged rows (no key), deleted or re-ordered rows inside the chain, and a different key.
+
+### Recorder failure mode: FAIL-CLOSED
+`ChainedAuditEventRecorder` lets an append failure propagate to the caller. Reason: an action that cannot be recorded must not silently proceed as if audited. Cost: an audit-store outage becomes an availability problem. Phase 6B must decide the exact ordering; today evidence flows record after their own commit, so a failed append could leave an unaudited, already committed action.
+
+### Residual risks
+1. **Key beside the database**: anyone who can read the key file and write the database can recompute a valid chain. Production needs the key in a separate trust domain (secret manager or HSM). Not done.
+2. **Single-node lock**: the lock is in-process. Multiple nodes rely on the unique `sequence_no` constraint (fail, not fork); retry behaviour is not designed.
+3. **Tail truncation**: deleting the newest rows, or deleting them and appending new events, leaves a chain that `verifyChain()` accepts. It is detectable only by comparing `currentHead()` with an externally stored copy (an anchor). No anchoring job exists yet. Test SEC-AUDIT-08 demonstrates both the limitation and the anchor detection.
+4. **DB-level immutability**: implemented for PostgreSQL only, as Flyway migration `db/migration-postgresql/V7__audit_events_immutable.sql`, loaded via `spring.flyway.locations=classpath:db/migration,classpath:db/migration-{vendor}`. A trigger rejects UPDATE, DELETE and TRUNCATE (test SEC-AUDIT-17 on a real PostgreSQL container). H2 (test/dev) has no trigger. The table owner or a superuser can still drop the trigger; in production the application role should additionally lose write rights (`REVOKE UPDATE, DELETE, TRUNCATE ON audit_events FROM <app_role>`). That role setup is NOT in the repository and is not tested.
+5. **Windows key permissions** are best effort only (VERIFY MANUALLY).

@@ -2,10 +2,12 @@ package com.casevault.service;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 /** Logs metadata only; this is deliberately not the Phase 6 cryptographic audit log. */
 @Component
+@ConditionalOnProperty(name = "casevault.audit.recorder", havingValue = "logging", matchIfMissing = true)
 public class LoggingAuditEventRecorder implements AuditEventRecorder {
     private static final Logger LOGGER = LoggerFactory.getLogger(LoggingAuditEventRecorder.class);
 
@@ -23,11 +25,8 @@ public class LoggingAuditEventRecorder implements AuditEventRecorder {
         if (eventType == null) {
             return "UNKNOWN";
         }
-        return switch (eventType) {
-            case EVIDENCE_UPLOADED -> "EVIDENCE_UPLOADED";
-            case EVIDENCE_DOWNLOADED -> "EVIDENCE_DOWNLOADED";
-            case EVIDENCE_REJECTED -> "EVIDENCE_REJECTED";
-        };
+        // Enum constant names are a closed, code-defined set, so they are safe to log.
+        return eventType.name();
     }
 
     private static String mapReasonCode(String reasonCode) {

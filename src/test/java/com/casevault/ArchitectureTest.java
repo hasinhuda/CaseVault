@@ -47,6 +47,41 @@ class ArchitectureTest {
             .because("all evidence queries and access policies must be strictly mediated by service layer");
 
     @ArchTest
+    static final ArchRule auditRepositoryOnlyAccessedByAuditLogService = classes()
+            .that().haveSimpleName("AuditEventRepository")
+            .should().onlyBeAccessed().byClassesThat().haveSimpleName("AuditLogService")
+            .as("SEC-AUDIT-ARCH-01: Only AuditLogService touches the audit repository")
+            .because("the audit log has exactly one append path (FR-13, SR-13)");
+
+    @ArchTest
+    static final ArchRule controllersMustNotTouchAuditRepository = noClasses()
+            .that().resideInAPackage("..controller..")
+            .should().dependOnClassesThat().haveSimpleName("AuditEventRepository")
+            .as("SEC-AUDIT-ARCH-02: Controllers cannot touch the audit repository")
+            .because("controllers must go through services");
+
+    @ArchTest
+    static final ArchRule auditRepositoryHasNoUpdateOrDeletePath = com.tngtech.archunit.lang.syntax.ArchRuleDefinition.methods()
+            .that().areDeclaredInClassesThat().haveSimpleName("AuditEventRepository")
+            .should().haveNameMatching("(save|count|find.*)")
+            .as("SEC-AUDIT-ARCH-03: The audit repository declares no delete, remove or update method")
+            .because("the audit log is append-only");
+
+    @ArchTest
+    static final ArchRule auditRepositoryIsNotACrudRepository = noClasses()
+            .that().haveSimpleName("AuditEventRepository")
+            .should().beAssignableTo(org.springframework.data.repository.CrudRepository.class)
+            .as("SEC-AUDIT-ARCH-04: The audit repository does not inherit delete methods from CrudRepository")
+            .because("CrudRepository would expose delete and deleteAll");
+
+    @ArchTest
+    static final ArchRule auditEventHasNoSetters = com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noMethods()
+            .that().areDeclaredInClassesThat().haveSimpleName("AuditEvent")
+            .should().haveNameStartingWith("set")
+            .as("SEC-AUDIT-ARCH-05: The audit entity is immutable and has no setters")
+            .because("a stored audit row must never be modified by the application");
+
+    @ArchTest
     static final ArchRule controllersMustNotAccessEvidenceRepositoryOrStorage = noClasses()
             .that().resideInAPackage("..controller..")
             .should().dependOnClassesThat().haveNameMatching(".*(EvidenceRepository|EvidenceStorageService|EvidenceStore).*")
