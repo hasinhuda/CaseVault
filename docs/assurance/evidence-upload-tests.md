@@ -29,5 +29,23 @@
 | Stored display name with CR, LF or quotes cannot inject headers or split response | SEC-EVID-DL-02 | PASS |
 | Tampered stored ciphertext returns safe 404 error page, releases no plaintext, and records INTEGRITY_FAILED audit placeholder | SEC-EVID-DL-03 | PASS |
 | Deleted or missing stored file returns safe 404 error page and records FILE_NOT_FOUND audit placeholder | SEC-EVID-DL-04 | PASS |
+| Hash mismatch between plaintext and DB sha256 records exactly ONE INTEGRITY_FAILED audit placeholder event | SEC-EVID-DL-05 | PASS |
+| Database save failure triggers cleanup of written encrypted file (no orphan file) and 0 DB rows remain | SEC-EVID-FAIL-01 | PASS |
+| File storage write failure aborts operation and leaves no database row | SEC-EVID-FAIL-02 | PASS |
+| Evidence tab renders for CLIENT, ANALYST and MANAGER with role-appropriate controls | SEC-EVID-UI-01 | PASS |
+| Stored display name with script tags is HTML-escaped (`&lt;script&gt;` present, no raw `<script>`) in Evidence tab | SEC-EVID-UI-02 | PASS |
+| Evidence tab is hidden from AUDITOR_ADMIN and direct request returns HTTP 404 | SEC-EVID-UI-03 | PASS |
+| Template scanner security gate confirms zero `th:utext` or unsafe inline handlers across all templates | SEC-EVID-UI-04 | PASS |
+| Upload accepted audit placeholder log contains only event type, UUIDs and fixed reason code with no secrets or filenames | SEC-EVID-LOG-01 | PASS |
+| Upload rejected with CRLF filename prevents log injection and does not create second line | SEC-EVID-LOG-02 | PASS |
+| Download verified audit placeholder log contains only metadata and no keys or filenames | SEC-EVID-LOG-03 | PASS |
+| Integrity failure audit placeholder log records INTEGRITY_FAILED with zero plaintext leakage | SEC-EVID-LOG-04 | PASS |
+| Missing file audit placeholder log records FILE_NOT_FOUND without leaking path | SEC-EVID-LOG-05 | PASS |
+| Evidence storage boundary is service-only | SEC-EVID-ARCH-01 | PASS |
+| EvidenceRepository is accessed only by service classes | SEC-EVID-ARCH-02 | PASS |
+| Controllers must not access EvidenceRepository or storage classes directly | SEC-EVID-ARCH-03 | PASS |
 
-Note: Phase 6 cryptographic audit log chaining and verification pending (audit events recorded above are placeholders). Groups D through G tests pending.
+### Multipart & Audit Notes
+- `SEC-EVID-WEB-05` exercises the validator's 10MB rule through MockMvc. The servlet multipart limit (`spring.servlet.multipart.max-file-size=10MB`, `max-request-size=11MB`) is covered separately by `GlobalExceptionHandlerUploadTest`.
+- **Known Limitation**: An oversize upload stopped early by the servlet multipart container limit (`MaxUploadSizeExceededException`) is handled at the servlet/filter boundary before controller or service invocation, and therefore does NOT produce an audit placeholder event.
+- **Audit Implementation Note**: Phase 6 cryptographic audit log chaining and verification pending. All audit events recorded in Phase 5 are metadata placeholders (`LoggingAuditEventRecorder`).

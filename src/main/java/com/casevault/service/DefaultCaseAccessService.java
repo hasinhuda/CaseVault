@@ -500,16 +500,16 @@ public class DefaultCaseAccessService implements CaseAccessService {
         byte[] plaintext;
         try {
             plaintext = evidenceStorageService.decryptAndRetrieve(evidence.getStoredName(), associatedData(caseId, evidenceId));
-            if (!EvidenceValidator.computeSha256Hex(plaintext).equals(evidence.getSha256Hex())) {
-                auditEventRecorder.record(AuditEventType.EVIDENCE_REJECTED, principal.getUserId(), caseId, "INTEGRITY_FAILED");
-                throw new ResourceNotFoundException("Evidence not found");
-            }
-        } catch (ResourceNotFoundException ex) {
-            if (ex.getMessage() != null && ex.getMessage().contains("file not found")) {
-                auditEventRecorder.record(AuditEventType.EVIDENCE_REJECTED, principal.getUserId(), caseId, "FILE_NOT_FOUND");
-            } else {
-                auditEventRecorder.record(AuditEventType.EVIDENCE_REJECTED, principal.getUserId(), caseId, "INTEGRITY_FAILED");
-            }
+        } catch (EvidenceFileNotFoundException ex) {
+            auditEventRecorder.record(AuditEventType.EVIDENCE_REJECTED, principal.getUserId(), caseId, "FILE_NOT_FOUND");
+            throw new ResourceNotFoundException("Evidence not found");
+        } catch (EvidenceIntegrityException ex) {
+            auditEventRecorder.record(AuditEventType.EVIDENCE_REJECTED, principal.getUserId(), caseId, "INTEGRITY_FAILED");
+            throw new ResourceNotFoundException("Evidence not found");
+        }
+
+        if (!EvidenceValidator.computeSha256Hex(plaintext).equals(evidence.getSha256Hex())) {
+            auditEventRecorder.record(AuditEventType.EVIDENCE_REJECTED, principal.getUserId(), caseId, "INTEGRITY_FAILED");
             throw new ResourceNotFoundException("Evidence not found");
         }
         auditEventRecorder.record(AuditEventType.EVIDENCE_DOWNLOADED, principal.getUserId(), caseId, "INTEGRITY_VERIFIED");

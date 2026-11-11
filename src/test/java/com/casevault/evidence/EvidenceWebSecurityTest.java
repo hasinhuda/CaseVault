@@ -17,6 +17,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.mockito.Mockito;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -324,7 +326,7 @@ public class EvidenceWebSecurityTest {
                         .with(authentication(authFor(clientUserA)))
                         .with(csrf()))
                 .andExpect(status().isBadRequest())
-                .andExpect(content().string(containsString("exe")));
+                .andExpect(content().string(containsString("is not permitted")));
         verify(auditEventRecorder, atLeastOnce()).record(eq(AuditEventType.EVIDENCE_REJECTED), eq(clientUserA.getId()), eq(caseA.getId()), eq("VALIDATION_REJECTED"));
 
         // (e) report.exe.pdf
@@ -490,7 +492,8 @@ public class EvidenceWebSecurityTest {
                 .andExpect(content().string(not(containsString(ciphertextPath.toString()))))
                 .andExpect(content().string(not(containsString("Incident Report Case #49281"))));
 
-        verify(auditEventRecorder, atLeastOnce()).record(eq(AuditEventType.EVIDENCE_REJECTED), eq(clientUserA.getId()), eq(caseA.getId()), eq("INTEGRITY_FAILED"));
+        verify(auditEventRecorder, times(1)).record(eq(AuditEventType.EVIDENCE_REJECTED), eq(clientUserA.getId()), eq(caseA.getId()), eq("INTEGRITY_FAILED"));
+        verifyNoMoreInteractions(auditEventRecorder);
     }
 
     @Test
@@ -510,6 +513,27 @@ public class EvidenceWebSecurityTest {
                 .andExpect(content().string(not(containsString("StackTrace"))))
                 .andExpect(content().string(not(containsString(ciphertextPath.toString()))));
 
-        verify(auditEventRecorder, atLeastOnce()).record(eq(AuditEventType.EVIDENCE_REJECTED), eq(clientUserA.getId()), eq(caseA.getId()), eq("FILE_NOT_FOUND"));
+        verify(auditEventRecorder, times(1)).record(eq(AuditEventType.EVIDENCE_REJECTED), eq(clientUserA.getId()), eq(caseA.getId()), eq("FILE_NOT_FOUND"));
+        verifyNoMoreInteractions(auditEventRecorder);
+    }
+
+    @Test
+    @DisplayName("SEC-EVID-DL-05: Hash mismatch between plaintext and DB sha256 records exactly ONE INTEGRITY_FAILED audit event")
+    void hashMismatchRecordsExactlyOneAuditIntegrityFailedEvent() throws Exception {
+        Evidence ev = uploadViaMockMvc(caseA.getId(), clientUserA, "hash_mismatch.txt", "text/plain", VALID_TXT_BYTES);
+
+        // Corrupt the DB record's sha256Hex so it mismatches decrypted plaintext
+        ev.setSha256Hex("0000000000000000000000000000000000000000000000000000000000000000");
+        evidenceRepository.save(ev);
+
+        clearInvocations(auditEventRecorder);
+        mockMvc.perform(get("/cases/{caseId}/evidence/{evidenceId}", caseA.getId(), ev.getId())
+                        .with(authentication(authFor(clientUserA))))
+                .andExpect(status().isNotFound())
+                .andExpect(content().string(containsString("Incident Correlation ID")));
+
+        // Must record exactly ONE INTEGRITY_FAILED audit event, not duplicate
+        verify(auditEventRecorder, times(1)).record(eq(AuditEventType.EVIDENCE_REJECTED), eq(clientUserA.getId()), eq(caseA.getId()), eq("INTEGRITY_FAILED"));
+        verifyNoMoreInteractions(auditEventRecorder);
     }
 }
