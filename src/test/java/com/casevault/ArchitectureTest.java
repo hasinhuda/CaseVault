@@ -30,6 +30,14 @@ class ArchitectureTest {
             .should().onlyBeAccessed().byAnyPackage("..repository..", "..service..", "..bootstrap..", "..config..", "..security..")
             .as("SEC-AUTHZ-ARCH-02: Repositories must only be accessed by service and security/bootstrap infrastructure")
             .because("Only services enforce tenant and role access policies");
+
+    @ArchTest
+    static final ArchRule evidenceStorageOnlyAccessedByServices = classes()
+            .that().resideInAPackage("..service..")
+            .and().haveNameMatching(".*(EvidenceStorageService|EvidenceStore).*")
+            .should().onlyBeAccessed().byAnyPackage("..service..")
+            .as("SEC-EVID-ARCH-01: Evidence storage boundary is service-only")
+            .because("controllers must use CaseAccessService and never access encrypted storage directly");
 }
 
 

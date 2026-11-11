@@ -132,11 +132,29 @@ public class AuthorisationOperationMatrixTest {
 
         // Evidence artifacts
         evidenceA1 = evidenceRepository.save(new Evidence(
-                UUID.randomUUID().toString(), caseA1AssignedToBob, "ransomware_note.txt", clientUserA, now
+                UUID.randomUUID().toString(),
+                caseA1AssignedToBob,
+                "ransomware_note.txt",
+                UUID.randomUUID().toString(),
+                "text/plain",
+                1024L,
+                "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                1,
+                clientUserA,
+                now
         ));
 
         evidenceB1 = evidenceRepository.save(new Evidence(
-                UUID.randomUUID().toString(), caseB1, "confidential_dump.csv", clientUserB, now
+                UUID.randomUUID().toString(),
+                caseB1,
+                "confidential_dump.csv",
+                UUID.randomUUID().toString(),
+                "text/plain",
+                2048L,
+                "f6e5d4c3b2a1f6e5d4c3b2a1f6e5d4c3b2a1f6e5d4c3b2a1f6e5d4c3b2a1f6e5",
+                1,
+                clientUserB,
+                now
         ));
     }
 
@@ -449,5 +467,320 @@ public class AuthorisationOperationMatrixTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(validCase)))
                 .andExpect(status().isCreated());
+    }
+
+    @org.junit.jupiter.api.io.TempDir
+    java.nio.file.Path tempStorageDir;
+
+    private com.casevault.service.DefaultCaseAccessService getDirectCaseAccessService() {
+        com.casevault.service.EvidenceStorageService tempEvidenceStore = new com.casevault.service.EvidenceStorageService(
+                tempStorageDir.resolve("evidence").toString(),
+                tempStorageDir.resolve("keyset.json").toString()
+        );
+        return new com.casevault.service.DefaultCaseAccessService(
+                caseRepository,
+                evidenceRepository,
+                organisationRepository,
+                userRepository,
+                caseNoteRepository,
+                remediationActionRepository,
+                new com.casevault.security.AccessPolicy(),
+                new com.casevault.service.EvidenceValidator(new com.casevault.service.StubAntivirusScanner()),
+                tempEvidenceStore,
+                new com.casevault.service.LoggingAuditEventRecorder()
+        );
+    }
+
+    private CaseVaultUserPrincipal principalFor(User user) {
+        return new CaseVaultUserPrincipal(user, Instant.now());
+    }
+
+    private static final byte[] SYNTHETIC_TEXT_BYTES = "2026-11-10 14:00:00 Incident Report Case #49281".getBytes(java.nio.charset.StandardCharsets.UTF_8);
+
+    @Test
+    @DisplayName("SEC-EVID-AUTHZ-01: CLIENT own organisation can upload, list, and download; CLIENT from other organisation receives 404")
+    void clientOwnOrgEvidenceLifecycleAndCrossTenantIsolation() {
+        com.casevault.service.DefaultCaseAccessService service = getDirectCaseAccessService();
+        CaseVaultUserPrincipal clientPrincipalA = principalFor(clientUserA);
+        CaseVaultUserPrincipal clientPrincipalB = principalFor(clientUserB);
+
+        // 1. Client User A uploads to own organisation Case A1 -> OK
+        org.springframework.mock.web.MockMultipartFile validFile = new org.springframework.mock.web.MockMultipartFile(
+                "file", "network_dump.txt", "text/plain", SYNTHETIC_TEXT_BYTES
+        );
+        com.casevault.dto.EvidenceResponseDto uploadedA = service.uploadEvidence(caseA1AssignedToBob.getId(), validFile, clientPrincipalA);
+        org.junit.jupiter.api.Assertions.assertNotNull(uploadedA);
+        org.junit.jupiter.api.Assertions.assertEquals("network_dump.txt", uploadedA.getOriginalName());
+
+        // 2. Client User A lists evidence of Case A1 -> OK (contains uploaded evidence)
+        java.util.List<com.casevault.dto.EvidenceResponseDto> listA = service.listEvidence(caseA1AssignedToBob.getId(), clientPrincipalA);
+        org.junit.jupiter.api.Assertions.assertTrue(listA.stream().anyMatch(e -> e.getId().equals(uploadedA.getId())));
+
+        // 3. Client User A downloads evidence from Case A1 -> OK (payload matches plaintext)
+        com.casevault.service.EvidenceDownload downloadA = service.openEvidence(caseA1AssignedToBob.getId(), uploadedA.getId(), clientPrincipalA);
+        org.junit.jupiter.api.Assertions.assertArrayEquals(SYNTHETIC_TEXT_BYTES, downloadA.content());
+
+        // 4. Cross-tenant attempt: Client User B attempts upload to Case A1 -> 404 Not Found
+        org.junit.jupiter.api.Assertions.assertThrows(com.casevault.exception.ResourceNotFoundException.class,
+                () -> service.uploadEvidence(caseA1AssignedToBob.getId(), validFile, clientPrincipalB));
+
+        // 5. Cross-tenant attempt: Client User B attempts list evidence of Case A1 -> 404 Not Found
+        org.junit.jupiter.api.Assertions.assertThrows(com.casevault.exception.ResourceNotFoundException.class,
+                () -> service.listEvidence(caseA1AssignedToBob.getId(), clientPrincipalB));
+
+        // 6. Cross-tenant attempt: Client User B attempts download of evidence from Case A1 -> 404 Not Found
+        org.junit.jupiter.api.Assertions.assertThrows(com.casevault.exception.ResourceNotFoundException.class,
+                () -> service.openEvidence(caseA1AssignedToBob.getId(), uploadedA.getId(), clientPrincipalB));
+
+        // 7. Cross-tenant attempt: Client User A attempts upload to Case B1 -> 404 Not Found
+        org.junit.jupiter.api.Assertions.assertThrows(com.casevault.exception.ResourceNotFoundException.class,
+                () -> service.uploadEvidence(caseB1.getId(), validFile, clientPrincipalA));
+
+        // 8. Cross-tenant attempt: Client User A attempts list evidence of Case B1 -> 404 Not Found
+        org.junit.jupiter.api.Assertions.assertThrows(com.casevault.exception.ResourceNotFoundException.class,
+                () -> service.listEvidence(caseB1.getId(), clientPrincipalA));
+    }
+
+    @Test
+    @DisplayName("SEC-EVID-AUTHZ-02: Assigned ANALYST can upload, list, and download; unassigned ANALYST receives 404")
+    void analystAssignedCaseEvidenceLifecycleAndUnassignedBoundary() {
+        com.casevault.service.DefaultCaseAccessService service = getDirectCaseAccessService();
+        CaseVaultUserPrincipal analystPrincipalBob = principalFor(analystBob);
+
+        // 1. Assigned Analyst Bob uploads evidence to assigned Case A1 -> OK
+        org.springframework.mock.web.MockMultipartFile analystFile = new org.springframework.mock.web.MockMultipartFile(
+                "file", "analyst_notes.txt", "text/plain", SYNTHETIC_TEXT_BYTES
+        );
+        com.casevault.dto.EvidenceResponseDto uploaded = service.uploadEvidence(caseA1AssignedToBob.getId(), analystFile, analystPrincipalBob);
+        org.junit.jupiter.api.Assertions.assertNotNull(uploaded);
+
+        // 2. Assigned Analyst Bob lists evidence of Case A1 -> OK
+        java.util.List<com.casevault.dto.EvidenceResponseDto> list = service.listEvidence(caseA1AssignedToBob.getId(), analystPrincipalBob);
+        org.junit.jupiter.api.Assertions.assertTrue(list.stream().anyMatch(e -> e.getId().equals(uploaded.getId())));
+
+        // 3. Assigned Analyst Bob downloads evidence of Case A1 -> OK
+        com.casevault.service.EvidenceDownload download = service.openEvidence(caseA1AssignedToBob.getId(), uploaded.getId(), analystPrincipalBob);
+        org.junit.jupiter.api.Assertions.assertArrayEquals(SYNTHETIC_TEXT_BYTES, download.content());
+
+        // 4. Unassigned Analyst Bob attempts upload to Case A2 (unassigned) -> 404 Not Found
+        org.junit.jupiter.api.Assertions.assertThrows(com.casevault.exception.ResourceNotFoundException.class,
+                () -> service.uploadEvidence(caseA2Unassigned.getId(), analystFile, analystPrincipalBob));
+
+        // 5. Unassigned Analyst Bob attempts list evidence of Case A2 -> 404 Not Found
+        org.junit.jupiter.api.Assertions.assertThrows(com.casevault.exception.ResourceNotFoundException.class,
+                () -> service.listEvidence(caseA2Unassigned.getId(), analystPrincipalBob));
+
+        // 6. Unassigned Analyst Bob attempts download from Case A2 -> 404 Not Found
+        org.junit.jupiter.api.Assertions.assertThrows(com.casevault.exception.ResourceNotFoundException.class,
+                () -> service.openEvidence(caseA2Unassigned.getId(), UUID.randomUUID().toString(), analystPrincipalBob));
+
+        // 7. Unassigned Analyst Bob attempts upload to Case B1 -> 404 Not Found
+        org.junit.jupiter.api.Assertions.assertThrows(com.casevault.exception.ResourceNotFoundException.class,
+                () -> service.uploadEvidence(caseB1.getId(), analystFile, analystPrincipalBob));
+    }
+
+    @Test
+    @DisplayName("SEC-EVID-AUTHZ-03: Internal consultancy MANAGER (ORG_INTERNAL) can view and download any case; client MANAGER restricted to own organisation")
+    void managerInternalConsultancyVsClientManagerBoundaries() {
+        com.casevault.service.DefaultCaseAccessService service = getDirectCaseAccessService();
+        CaseVaultUserPrincipal internalManagerPrincipal = principalFor(managerAlice);
+        CaseVaultUserPrincipal clientManagerPrincipal = principalFor(clientManagerA);
+
+        // First upload evidence to Case A1 and Case B1
+        org.springframework.mock.web.MockMultipartFile fileA = new org.springframework.mock.web.MockMultipartFile(
+                "file", "ev_a1.txt", "text/plain", SYNTHETIC_TEXT_BYTES
+        );
+        org.springframework.mock.web.MockMultipartFile fileB = new org.springframework.mock.web.MockMultipartFile(
+                "file", "ev_b1.txt", "text/plain", SYNTHETIC_TEXT_BYTES
+        );
+        com.casevault.dto.EvidenceResponseDto uploadedA = service.uploadEvidence(caseA1AssignedToBob.getId(), fileA, principalFor(clientUserA));
+        com.casevault.dto.EvidenceResponseDto uploadedB = service.uploadEvidence(caseB1.getId(), fileB, principalFor(clientUserB));
+
+        // 1. Internal consultancy manager Alice (ORG_INTERNAL) can view/list Case A1 and Case B1
+        java.util.List<com.casevault.dto.EvidenceResponseDto> listA = service.listEvidence(caseA1AssignedToBob.getId(), internalManagerPrincipal);
+        org.junit.jupiter.api.Assertions.assertTrue(listA.stream().anyMatch(e -> e.getId().equals(uploadedA.getId())));
+
+        java.util.List<com.casevault.dto.EvidenceResponseDto> listB = service.listEvidence(caseB1.getId(), internalManagerPrincipal);
+        org.junit.jupiter.api.Assertions.assertTrue(listB.stream().anyMatch(e -> e.getId().equals(uploadedB.getId())));
+
+        // 2. Internal consultancy manager Alice can download evidence from Case A1 and Case B1
+        com.casevault.service.EvidenceDownload dlA = service.openEvidence(caseA1AssignedToBob.getId(), uploadedA.getId(), internalManagerPrincipal);
+        org.junit.jupiter.api.Assertions.assertArrayEquals(SYNTHETIC_TEXT_BYTES, dlA.content());
+
+        com.casevault.service.EvidenceDownload dlB = service.openEvidence(caseB1.getId(), uploadedB.getId(), internalManagerPrincipal);
+        org.junit.jupiter.api.Assertions.assertArrayEquals(SYNTHETIC_TEXT_BYTES, dlB.content());
+
+        // 3. Client manager (Org A) can view/download own org Case A1
+        java.util.List<com.casevault.dto.EvidenceResponseDto> clientMgrListA = service.listEvidence(caseA1AssignedToBob.getId(), clientManagerPrincipal);
+        org.junit.jupiter.api.Assertions.assertTrue(clientMgrListA.stream().anyMatch(e -> e.getId().equals(uploadedA.getId())));
+
+        com.casevault.service.EvidenceDownload clientMgrDlA = service.openEvidence(caseA1AssignedToBob.getId(), uploadedA.getId(), clientManagerPrincipal);
+        org.junit.jupiter.api.Assertions.assertArrayEquals(SYNTHETIC_TEXT_BYTES, clientMgrDlA.content());
+
+        // 4. Client manager (Org A) CANNOT view or download foreign Org B Case B1 -> 404 Not Found
+        org.junit.jupiter.api.Assertions.assertThrows(com.casevault.exception.ResourceNotFoundException.class,
+                () -> service.listEvidence(caseB1.getId(), clientManagerPrincipal));
+
+        org.junit.jupiter.api.Assertions.assertThrows(com.casevault.exception.ResourceNotFoundException.class,
+                () -> service.openEvidence(caseB1.getId(), uploadedB.getId(), clientManagerPrincipal));
+    }
+
+    @Test
+    @DisplayName("SEC-EVID-AUTHZ-04: AUDITOR_ADMIN has strict zero-access to evidence and receives 404 on upload, list, and download (SR-07)")
+    void auditorAdminZeroAccessToEvidence() {
+        com.casevault.service.DefaultCaseAccessService service = getDirectCaseAccessService();
+        CaseVaultUserPrincipal auditorPrincipal = principalFor(auditorUser);
+
+        // Upload evidence to Case A1 using authorized client
+        org.springframework.mock.web.MockMultipartFile file = new org.springframework.mock.web.MockMultipartFile(
+                "file", "audit_target.txt", "text/plain", SYNTHETIC_TEXT_BYTES
+        );
+        com.casevault.dto.EvidenceResponseDto uploaded = service.uploadEvidence(caseA1AssignedToBob.getId(), file, principalFor(clientUserA));
+
+        // 1. AUDITOR_ADMIN attempting upload -> 404
+        org.junit.jupiter.api.Assertions.assertThrows(com.casevault.exception.ResourceNotFoundException.class,
+                () -> service.uploadEvidence(caseA1AssignedToBob.getId(), file, auditorPrincipal));
+
+        // 2. AUDITOR_ADMIN attempting list -> 404
+        org.junit.jupiter.api.Assertions.assertThrows(com.casevault.exception.ResourceNotFoundException.class,
+                () -> service.listEvidence(caseA1AssignedToBob.getId(), auditorPrincipal));
+
+        // 3. AUDITOR_ADMIN attempting download -> 404
+        org.junit.jupiter.api.Assertions.assertThrows(com.casevault.exception.ResourceNotFoundException.class,
+                () -> service.openEvidence(caseA1AssignedToBob.getId(), uploaded.getId(), auditorPrincipal));
+
+        // 4. AUDITOR_ADMIN attempting getEvidenceById -> 404
+        org.junit.jupiter.api.Assertions.assertThrows(com.casevault.exception.ResourceNotFoundException.class,
+                () -> service.getEvidenceById(uploaded.getId(), auditorPrincipal));
+    }
+
+    @Test
+    @DisplayName("SEC-EVID-AUTHZ-05: Evidence of case B requested under case A returns 404; unknown IDs return 404")
+    void crossCaseEvidenceMismatchAndUnknownIdsReturn404() {
+        com.casevault.service.DefaultCaseAccessService service = getDirectCaseAccessService();
+        CaseVaultUserPrincipal clientPrincipalA = principalFor(clientUserA);
+        CaseVaultUserPrincipal internalManagerPrincipal = principalFor(managerAlice);
+
+        org.springframework.mock.web.MockMultipartFile fileA = new org.springframework.mock.web.MockMultipartFile(
+                "file", "ev_a.txt", "text/plain", SYNTHETIC_TEXT_BYTES
+        );
+        org.springframework.mock.web.MockMultipartFile fileB = new org.springframework.mock.web.MockMultipartFile(
+                "file", "ev_b.txt", "text/plain", SYNTHETIC_TEXT_BYTES
+        );
+        com.casevault.dto.EvidenceResponseDto uploadedA = service.uploadEvidence(caseA1AssignedToBob.getId(), fileA, clientPrincipalA);
+        com.casevault.dto.EvidenceResponseDto uploadedB = service.uploadEvidence(caseB1.getId(), fileB, principalFor(clientUserB));
+
+        // 1. Evidence B requested under Case A1 by manager (who has access to both cases) -> 404 Not Found
+        org.junit.jupiter.api.Assertions.assertThrows(com.casevault.exception.ResourceNotFoundException.class,
+                () -> service.openEvidence(caseA1AssignedToBob.getId(), uploadedB.getId(), internalManagerPrincipal));
+
+        // 2. Evidence A requested under Case B1 by manager -> 404 Not Found
+        org.junit.jupiter.api.Assertions.assertThrows(com.casevault.exception.ResourceNotFoundException.class,
+                () -> service.openEvidence(caseB1.getId(), uploadedA.getId(), internalManagerPrincipal));
+
+        // 3. Unknown case ID with valid evidence ID -> 404 Not Found
+        org.junit.jupiter.api.Assertions.assertThrows(com.casevault.exception.ResourceNotFoundException.class,
+                () -> service.openEvidence(UUID.randomUUID().toString(), uploadedA.getId(), internalManagerPrincipal));
+
+        // 4. Valid case ID with unknown evidence ID -> 404 Not Found
+        org.junit.jupiter.api.Assertions.assertThrows(com.casevault.exception.ResourceNotFoundException.class,
+                () -> service.openEvidence(caseA1AssignedToBob.getId(), UUID.randomUUID().toString(), internalManagerPrincipal));
+
+        // 5. Unknown case ID and unknown evidence ID -> 404 Not Found
+        org.junit.jupiter.api.Assertions.assertThrows(com.casevault.exception.ResourceNotFoundException.class,
+                () -> service.openEvidence(UUID.randomUUID().toString(), UUID.randomUUID().toString(), internalManagerPrincipal));
+    }
+
+    @Test
+    @DisplayName("SEC-EVID-AUTHZ-06: Upload to a CLOSED case is rejected with 400 Bad Request")
+    void uploadToClosedCaseRejected() {
+        com.casevault.service.DefaultCaseAccessService service = getDirectCaseAccessService();
+        CaseVaultUserPrincipal clientPrincipalA = principalFor(clientUserA);
+
+        // Create a case in CLOSED state
+        Case closedCase = caseRepository.save(new Case(
+                UUID.randomUUID().toString(), orgA, "Closed Incident Case", "MALWARE", "LOW", "CLOSED", clientUserA, analystBob, Instant.now()
+        ));
+
+        org.springframework.mock.web.MockMultipartFile file = new org.springframework.mock.web.MockMultipartFile(
+                "file", "late_evidence.txt", "text/plain", SYNTHETIC_TEXT_BYTES
+        );
+
+        // Uploading to a CLOSED case must throw BadRequestException
+        com.casevault.exception.BadRequestException ex = org.junit.jupiter.api.Assertions.assertThrows(
+                com.casevault.exception.BadRequestException.class,
+                () -> service.uploadEvidence(closedCase.getId(), file, clientPrincipalA)
+        );
+        org.junit.jupiter.api.Assertions.assertTrue(ex.getMessage().contains("Evidence cannot be uploaded to a closed case."));
+    }
+
+    @Test
+    @DisplayName("SEC-EVID-AUTHZ-07: Mass assignment prevention: organisationId, uploader, and caseId form parameters are ignored")
+    void massAssignmentAttributesIgnored() throws Exception {
+        // Upload via MockMvc with attacker-supplied organisationId, uploader, and caseId in multipart form params
+        org.springframework.mock.web.MockMultipartFile uploadFile = new org.springframework.mock.web.MockMultipartFile(
+                "file", "mass_assignment_probe.txt", "text/plain", SYNTHETIC_TEXT_BYTES
+        );
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart("/cases/{id}/evidence", caseA1AssignedToBob.getId())
+                        .file(uploadFile)
+                        .param("organisationId", orgB.getId())
+                        .param("uploadedBy", clientUserB.getId())
+                        .param("uploaderId", clientUserB.getId())
+                        .param("uploader", clientUserB.getId())
+                        .param("caseId", caseB1.getId())
+                        .with(authentication(authFor(clientUserA)))
+                        .with(csrf()))
+                .andExpect(status().is3xxRedirection());
+
+        // Verify in database that saved entity strictly bound authenticated principal and target path variable
+        java.util.List<Evidence> savedList = evidenceRepository.findByACaseId(caseA1AssignedToBob.getId());
+        Evidence probe = savedList.stream()
+                .filter(e -> "mass_assignment_probe.txt".equals(e.getOriginalName()))
+                .findFirst()
+                .orElseThrow(() -> new AssertionError("Uploaded evidence must exist in Case A1 records"));
+
+        org.junit.jupiter.api.Assertions.assertEquals(caseA1AssignedToBob.getId(), probe.getCase().getId(), "Case ID must match path variable");
+        org.junit.jupiter.api.Assertions.assertEquals(orgA.getId(), probe.getCase().getOrganisation().getId(), "Organisation must remain Org A");
+        org.junit.jupiter.api.Assertions.assertEquals(clientUserA.getId(), probe.getUploadedBy().getId(), "Uploader must be authenticated principal Client A");
+        org.junit.jupiter.api.Assertions.assertNotEquals(clientUserB.getId(), probe.getUploadedBy().getId(), "Attacker uploader ID must be ignored");
+        org.junit.jupiter.api.Assertions.assertNotEquals(orgB.getId(), probe.getCase().getOrganisation().getId(), "Attacker org ID must be ignored");
+    }
+
+    @Test
+    @DisplayName("SEC-EVID-AUTHZ-08: Role upload authorization enforcement (FR-08): only CLIENT and assigned ANALYST may upload; MANAGER and AUDITOR_ADMIN cannot upload")
+    void uploadRolePermissionEnforcement() {
+        com.casevault.service.DefaultCaseAccessService service = getDirectCaseAccessService();
+        org.springframework.mock.web.MockMultipartFile file = new org.springframework.mock.web.MockMultipartFile(
+                "file", "role_test.txt", "text/plain", SYNTHETIC_TEXT_BYTES
+        );
+
+        // 1. CLIENT (own org) may upload -> OK
+        org.junit.jupiter.api.Assertions.assertDoesNotThrow(
+                () -> service.uploadEvidence(caseA1AssignedToBob.getId(), file, principalFor(clientUserA))
+        );
+
+        // 2. ANALYST (assigned to case) may upload -> OK
+        org.junit.jupiter.api.Assertions.assertDoesNotThrow(
+                () -> service.uploadEvidence(caseA1AssignedToBob.getId(), file, principalFor(analystBob))
+        );
+
+        // 3. MANAGER (even internal ORG_INTERNAL) cannot upload evidence per FR-08 -> 404
+        org.junit.jupiter.api.Assertions.assertThrows(
+                com.casevault.exception.ResourceNotFoundException.class,
+                () -> service.uploadEvidence(caseA1AssignedToBob.getId(), file, principalFor(managerAlice))
+        );
+
+        // 4. MANAGER of client org cannot upload evidence -> 404
+        org.junit.jupiter.api.Assertions.assertThrows(
+                com.casevault.exception.ResourceNotFoundException.class,
+                () -> service.uploadEvidence(caseA1AssignedToBob.getId(), file, principalFor(clientManagerA))
+        );
+
+        // 5. AUDITOR_ADMIN cannot upload evidence -> 404
+        org.junit.jupiter.api.Assertions.assertThrows(
+                com.casevault.exception.ResourceNotFoundException.class,
+                () -> service.uploadEvidence(caseA1AssignedToBob.getId(), file, principalFor(auditorUser))
+        );
     }
 }

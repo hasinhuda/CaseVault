@@ -9,7 +9,7 @@ Under Hard Rule 1 and Hard Rule 7, no custom cryptographic algorithms may be use
 
 ## Decision
 1. **Google Tink Envelope Encryption**:
-   - Digital evidence binaries are encrypted at rest using **Google Tink** (`tink:1.15.0` or newer).
+   - Digital evidence binaries are encrypted at rest using **Google Tink**.
    - Algorithm: **AES-256-GCM** authenticated encryption with associated data (AEAD).
    - Envelope encryption model: Each uploaded evidence artifact is encrypted before being written to persistent storage.
 2. **Storage Location Outside Web Root**:
@@ -31,6 +31,12 @@ Under Hard Rule 1 and Hard Rule 7, no custom cryptographic algorithms may be use
      - `X-Content-Type-Options: nosniff`
      - `Content-Security-Policy: default-src 'none'`
    - Plaintext evidence is never cached or written to temporary unencrypted disk locations.
+
+## Implementation note (Phase 5 DRAFT)
+
+The current implementation uses Tink AES-256-GCM with associated data formed from the case ID and evidence ID. It stores a randomly generated stored name only, verifies a JDK SHA-256 value after decryption, and uses download headers for attachment, `nosniff`, and `no-store`.
+
+Residual risk: this prototype stores the Tink keyset beside (but outside) the encrypted evidence directory under `.local-data/keys/`. Owner-only POSIX permissions are requested where supported. A production deployment needs a KMS or externally supplied master key; local keyset storage alone does not provide that separation.
 
 ## Consequences
 - **Positive**:

@@ -40,6 +40,7 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -65,6 +66,9 @@ public class DefaultCaseAccessService implements CaseAccessService {
     private final CaseNoteRepository caseNoteRepository;
     private final RemediationActionRepository remediationActionRepository;
     private final AccessPolicy accessPolicy;
+    private final EvidenceValidator evidenceValidator;
+    private final EvidenceStore evidenceStorageService;
+    private final AuditEventRecorder auditEventRecorder;
 
     public DefaultCaseAccessService(CaseRepository caseRepository,
                                    EvidenceRepository evidenceRepository,
@@ -72,7 +76,10 @@ public class DefaultCaseAccessService implements CaseAccessService {
                                    UserRepository userRepository,
                                    CaseNoteRepository caseNoteRepository,
                                    RemediationActionRepository remediationActionRepository,
-                                   AccessPolicy accessPolicy) {
+                                   AccessPolicy accessPolicy,
+                                   EvidenceValidator evidenceValidator,
+                                   EvidenceStore evidenceStorageService,
+                                   AuditEventRecorder auditEventRecorder) {
         this.caseRepository = caseRepository;
         this.evidenceRepository = evidenceRepository;
         this.organisationRepository = organisationRepository;
@@ -80,6 +87,9 @@ public class DefaultCaseAccessService implements CaseAccessService {
         this.caseNoteRepository = caseNoteRepository;
         this.remediationActionRepository = remediationActionRepository;
         this.accessPolicy = accessPolicy;
+        this.evidenceValidator = evidenceValidator;
+        this.evidenceStorageService = evidenceStorageService;
+        this.auditEventRecorder = auditEventRecorder;
     }
 
     private static boolean isValidTransition(String from, String to) {
@@ -430,6 +440,73 @@ public class DefaultCaseAccessService implements CaseAccessService {
         }
 
         return EvidenceResponseDto.fromEntity(evidence);
+    }
+
+    @Override
+    @Transactional
+    @PreAuthorize("isAuthenticated()")
+    public EvidenceResponseDto uploadEvidence(String caseId, MultipartFile file, CaseVaultUserPrincipal principal) {
+        Case aCase = getAccessibleCaseEntity(caseId, principal);
+        if (principal.getRole() != Role.CLIENT && principal.getRole() != Role.ANALYST) {
+            throw new ResourceNotFoundException("Case not found");
+        }
+        if (principal.getRole() == Role.ANALYST
+                && (aCase.getAssignedAnalyst() == null || !Objects.equals(principal.getUserId(), aCase.getAssignedAnalyst().getId()))) {
+            throw new ResourceNotFoundException("Case not found");
+        }
+        if ("CLOSED".equals(aCase.getStatus())) {
+            throw new BadRequestException("Evidence cannot be uploaded to a closed case.");
+        }
+        EvidenceValidator.ValidatedEvidence validated;
+        try {
+            validated = evidenceValidator.validate(file);
+        } catch (BadRequestException exception) {
+            auditEventRecorder.record(AuditEventType.EVIDENCE_REJECTED, principal.getUserId(), caseId, "VALIDATION_REJECTED");
+            throw exception;
+        }
+        User uploader = userRepository.findById(principal.getUserId())
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        String evidenceId = UUID.randomUUID().toString();
+        byte[] aad = associatedData(caseId, evidenceId);
+        evidenceStorageService.encryptAndStore(validated.storedName(), validated.content(), aad);
+        try {
+            Evidence saved = evidenceRepository.save(new Evidence(evidenceId, aCase, validated.originalName(),
+                    validated.storedName(), validated.detectedMimeType(), validated.sizeBytes(), validated.sha256Hex(),
+                    1, uploader, Instant.now()));
+            auditEventRecorder.record(AuditEventType.EVIDENCE_UPLOADED, principal.getUserId(), caseId, "ACCEPTED");
+            return EvidenceResponseDto.fromEntity(saved);
+        } catch (org.springframework.dao.DataAccessException exception) {
+            evidenceStorageService.discardQuietly(validated.storedName());
+            throw exception;
+        }
+    }
+
+    @Override
+    @PreAuthorize("isAuthenticated()")
+    public List<EvidenceResponseDto> listEvidence(String caseId, CaseVaultUserPrincipal principal) {
+        getAccessibleCaseEntity(caseId, principal);
+        return evidenceRepository.findByACaseId(caseId).stream().map(EvidenceResponseDto::fromEntity).collect(Collectors.toList());
+    }
+
+    @Override
+    @PreAuthorize("isAuthenticated()")
+    public EvidenceDownload openEvidence(String caseId, String evidenceId, CaseVaultUserPrincipal principal) {
+        Case aCase = getAccessibleCaseEntity(caseId, principal);
+        Evidence evidence = evidenceRepository.findById(evidenceId)
+                .orElseThrow(() -> new ResourceNotFoundException("Evidence not found"));
+        if (!Objects.equals(evidence.getCase().getId(), aCase.getId()) || !accessPolicy.canReadEvidence(principal, evidence)) {
+            throw new ResourceNotFoundException("Evidence not found");
+        }
+        byte[] plaintext = evidenceStorageService.decryptAndRetrieve(evidence.getStoredName(), associatedData(caseId, evidenceId));
+        if (!EvidenceValidator.computeSha256Hex(plaintext).equals(evidence.getSha256Hex())) {
+            throw new ResourceNotFoundException("Evidence not found");
+        }
+        auditEventRecorder.record(AuditEventType.EVIDENCE_DOWNLOADED, principal.getUserId(), caseId, "INTEGRITY_VERIFIED");
+        return new EvidenceDownload(evidence.getOriginalName(), plaintext);
+    }
+
+    private static byte[] associatedData(String caseId, String evidenceId) {
+        return (caseId + ":" + evidenceId).getBytes(java.nio.charset.StandardCharsets.UTF_8);
     }
 
     private Case getAccessibleCaseEntity(String caseId, CaseVaultUserPrincipal principal) {

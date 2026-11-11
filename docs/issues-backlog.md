@@ -31,3 +31,10 @@ This backlog tracks identified technical debt, deferred security enhancements, a
 4. **CLIENT Read Access to Notes and Remediation Actions (FR-07 Clarification)**:
    - **Current State**: FR-07 states notes and actions are authored by ANALYST and MANAGER. Whether CLIENTs may _read_ notes and actions on their own cases is not explicitly stated. The current implementation blocks CLIENT from reading notes and actions (they can only see the case overview).
    - **Deferred Action**: VERIFY MANUALLY with product owner whether CLIENT should have read-only access to case notes and remediation actions. If yes, update `CaseWebController` to show read-only tabs.
+# Evidence backlog (DRAFT)
+
+- Antivirus scanning is a deterministic synthetic-only stub; integrate an approved scanner before production use.
+- AES-GCM processing holds evidence in memory and is limited to 10 MB; use streaming encryption for larger files.
+- Storage is local single-node filesystem storage; production needs resilient managed storage.
+- Retention and deletion workflows are not yet implemented.
+- The cryptographic audit chain remains pending for Phase 6; the current recorder logs minimal metadata only.
