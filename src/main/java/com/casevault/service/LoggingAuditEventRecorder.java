@@ -40,6 +40,12 @@ public class LoggingAuditEventRecorder implements AuditEventRecorder {
         if ("INTEGRITY_VERIFIED".equals(reasonCode)) {
             return "INTEGRITY_VERIFIED";
         }
+        if ("INTEGRITY_FAILED".equals(reasonCode)) {
+            return "INTEGRITY_FAILED";
+        }
+        if ("FILE_NOT_FOUND".equals(reasonCode)) {
+            return "FILE_NOT_FOUND";
+        }
         return "UNSPECIFIED";
     }
 

@@ -60,10 +60,13 @@ public final class EvidenceStorageService implements EvidenceStore {
     @Override
     public byte[] decryptAndRetrieve(String storedName, byte[] associatedData) {
         Path target = resolveStoredPath(storedName);
+        if (!Files.exists(target)) {
+            throw new ResourceNotFoundException("Evidence file not found.");
+        }
         try {
             return aead().decrypt(Files.readAllBytes(target), associatedData);
-        } catch (IOException | GeneralSecurityException exception) {
-            throw new ResourceNotFoundException("Evidence not found");
+        } catch (GeneralSecurityException | IOException exception) {
+            throw new ResourceNotFoundException("Evidence decryption failed.");
         }
     }
 

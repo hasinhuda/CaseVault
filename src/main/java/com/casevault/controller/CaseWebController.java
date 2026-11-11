@@ -285,14 +285,22 @@ public class CaseWebController {
                                                    @PathVariable String evidenceId,
                                                    @AuthenticationPrincipal CaseVaultUserPrincipal principal) {
         EvidenceDownload download = caseAccessService.openEvidence(caseId, evidenceId, principal);
+        String safeFilename = sanitizeHeaderFilename(download.originalName());
         ContentDisposition disposition = ContentDisposition.attachment()
-                .filename(download.originalName(), StandardCharsets.UTF_8).build();
+                .filename(safeFilename, StandardCharsets.UTF_8).build();
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, disposition.toString())
                 .header("X-Content-Type-Options", "nosniff")
                 .header(HttpHeaders.CACHE_CONTROL, "no-store")
                 .contentType(MediaType.APPLICATION_OCTET_STREAM)
                 .body(download.content());
+    }
+
+    private static String sanitizeHeaderFilename(String filename) {
+        if (filename == null || filename.isBlank()) {
+            return "evidence.bin";
+        }
+        return filename.replace("\r", "").replace("\n", "").replace("\"", "");
     }
 
     private void addCommonPrincipalAttributes(Model model, CaseVaultUserPrincipal principal) {

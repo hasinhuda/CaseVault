@@ -12,3 +12,4 @@ This document transparently tracks all AI tooling and assistant usage during the
 # AI declaration
 
 2026-11-11: Assisted with Phase 5 Evidence upload security hardening (Part 0: SEC-EVID-HARDEN-01..03) and authorization matrix tests (Group A: SEC-EVID-AUTHZ-01..08); verified via `mvnw verify` (123 tests pass, 0 failures, 0 skipped, SpotBugs 0 bugs).
+2026-11-11: Assisted with Phase 5 Evidence upload HTTP web security (Group B: SEC-EVID-WEB-01..08) and secure evidence download (Group C: SEC-EVID-DL-01..04); verified via `mvnw verify` (135 tests pass, 0 failures, 0 skipped, SpotBugs 0 bugs). Audit events recorded are placeholders pending Phase 6.

@@ -17,5 +17,17 @@
 | Upload to a CLOSED case rejected with 400 Bad Request | SEC-EVID-AUTHZ-06 | PASS |
 | Form mass-assignment prevention: organisationId, uploader, and caseId parameters ignored | SEC-EVID-AUTHZ-07 | PASS |
 | Role upload authorization enforcement (FR-08): only CLIENT and assigned ANALYST may upload; MANAGER and AUDITOR_ADMIN cannot | SEC-EVID-AUTHZ-08 | PASS |
+| Upload without CSRF token returns 403 Forbidden | SEC-EVID-WEB-01 | PASS |
+| Unauthenticated upload returns 401 Unauthorized | SEC-EVID-WEB-02 | PASS |
+| MANAGER and AUDITOR_ADMIN upload returns HTTP 404 with safe body masking | SEC-EVID-WEB-03 | PASS |
+| Cross-tenant upload, list, download over HTTP returns HTTP 404 | SEC-EVID-WEB-04 | PASS |
+| Oversize file upload returns safe error page with correlation ID and no stack trace | SEC-EVID-WEB-05 | PASS |
+| Content validation failures (fake PNG with text, MZ in PDF, ELF bytes, double extensions .pdf.exe / .exe.pdf, empty file) return safe error and record EVIDENCE_REJECTED audit placeholder | SEC-EVID-WEB-06 | PASS |
+| Valid PDF, PNG, and TXT files uploaded over HTTP return 302 and record EVIDENCE_UPLOADED audit placeholder | SEC-EVID-WEB-07 | PASS |
+| Mass-assignment over HTTP ignores injected organisationId, uploader, and caseId form fields | SEC-EVID-WEB-08 | PASS |
+| Download responses include required defensive headers (Content-Disposition attachment, application/octet-stream, nosniff, no-store) | SEC-EVID-DL-01 | PASS |
+| Stored display name with CR, LF or quotes cannot inject headers or split response | SEC-EVID-DL-02 | PASS |
+| Tampered stored ciphertext returns safe 404 error page, releases no plaintext, and records INTEGRITY_FAILED audit placeholder | SEC-EVID-DL-03 | PASS |
+| Deleted or missing stored file returns safe 404 error page and records FILE_NOT_FOUND audit placeholder | SEC-EVID-DL-04 | PASS |
 
-Note: Phase 6 cryptographic audit log chaining and verification pending. Groups B through G tests pending.
+Note: Phase 6 cryptographic audit log chaining and verification pending (audit events recorded above are placeholders). Groups D through G tests pending.
