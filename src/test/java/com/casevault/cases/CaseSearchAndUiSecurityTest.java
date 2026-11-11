@@ -345,5 +345,25 @@ public class CaseSearchAndUiSecurityTest {
         boolean found = orgACases.stream().anyMatch(c -> "Web UI Reported Ransomware Breach".equals(c.getTitle()));
         assertTrue(found, "Newly reported case must exist in Org A database records");
     }
+
+    @Test
+    @DisplayName("SEC-EVID-HARDEN-03: Rejected upload error message with HTML tags is entity-escaped in rendered view")
+    void testRejectedExtensionHtmlEscapingInErrorPage() throws Exception {
+        org.springframework.mock.web.MockMultipartFile maliciousUpload = new org.springframework.mock.web.MockMultipartFile(
+                "file",
+                "attack.<script>",
+                "text/plain",
+                "test payload".getBytes(java.nio.charset.StandardCharsets.UTF_8)
+        );
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart("/cases/{id}/evidence", caseWildcardPercent.getId())
+                        .file(maliciousUpload)
+                        .with(authentication(authFor(clientUserA)))
+                        .with(csrf())
+                        .accept(MediaType.TEXT_HTML))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().string(containsString("&lt;script&gt;")))
+                .andExpect(content().string(not(containsString("<script>"))));
+    }
 }
 

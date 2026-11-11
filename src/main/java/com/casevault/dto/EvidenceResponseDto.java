@@ -9,6 +9,11 @@ public class EvidenceResponseDto {
     private String id;
     private String caseId;
     private String originalName;
+    private String storedName;
+    private String contentType;
+    private long sizeBytes;
+    private String sha256Hex;
+    private int encryptionVersion;
     private String uploadedByUserId;
     private String uploadedByUsername;
     private Instant createdAt;
@@ -23,6 +28,11 @@ public class EvidenceResponseDto {
             dto.caseId = e.getCase().getId();
         }
         dto.originalName = e.getOriginalName();
+        dto.storedName = e.getStoredName();
+        dto.contentType = e.getContentType();
+        dto.sizeBytes = e.getSizeBytes();
+        dto.sha256Hex = e.getSha256Hex();
+        dto.encryptionVersion = e.getEncryptionVersion();
         if (e.getUploadedBy() != null) {
             dto.uploadedByUserId = e.getUploadedBy().getId();
             dto.uploadedByUsername = e.getUploadedBy().getUsername();
@@ -43,6 +53,26 @@ public class EvidenceResponseDto {
         return originalName;
     }
 
+    public String getStoredName() {
+        return storedName;
+    }
+
+    public String getContentType() {
+        return contentType;
+    }
+
+    public long getSizeBytes() {
+        return sizeBytes;
+    }
+
+    public String getSha256Hex() {
+        return sha256Hex;
+    }
+
+    public int getEncryptionVersion() {
+        return encryptionVersion;
+    }
+
     public String getUploadedByUserId() {
         return uploadedByUserId;
     }
@@ -55,4 +85,3 @@ public class EvidenceResponseDto {
         return createdAt;
     }
 }
-

@@ -15,6 +15,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.context.request.WebRequest;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.servlet.ModelAndView;
 
 import java.util.HashMap;
@@ -71,6 +72,30 @@ public class GlobalExceptionHandler {
         mav.addObject("status", 400);
         mav.addObject("error", "Bad Request");
         mav.addObject("message", ex.getMessage());
+        mav.addObject("correlationId", correlationId);
+        return mav;
+    }
+
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public Object handleMaxUploadSizeExceeded(MaxUploadSizeExceededException ex, WebRequest request) {
+        String correlationId = UUID.randomUUID().toString();
+        logger.warn("MaxUploadSizeExceededException handled for correlationId={}", correlationId);
+
+        String safeMessage = "File upload exceeds the maximum allowed size of 10MB.";
+
+        if (isJsonRequest(request)) {
+            Map<String, Object> body = new HashMap<>();
+            body.put("error", "Bad Request");
+            body.put("message", safeMessage);
+            body.put("correlationId", correlationId);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).contentType(MediaType.APPLICATION_JSON).body(body);
+        }
+
+        ModelAndView mav = new ModelAndView("error");
+        mav.setStatus(HttpStatus.BAD_REQUEST);
+        mav.addObject("status", 400);
+        mav.addObject("error", "Payload Too Large");
+        mav.addObject("message", safeMessage);
         mav.addObject("correlationId", correlationId);
         return mav;
     }

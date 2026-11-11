@@ -1,8 +1,12 @@
 package com.casevault.db;
 
+import com.casevault.model.Case;
+import com.casevault.model.Evidence;
 import com.casevault.model.Organisation;
 import com.casevault.model.Role;
 import com.casevault.model.User;
+import com.casevault.repository.CaseRepository;
+import com.casevault.repository.EvidenceRepository;
 import com.casevault.repository.OrganisationRepository;
 import com.casevault.repository.UserRepository;
 import org.flywaydb.core.Flyway;
@@ -52,13 +56,19 @@ public class PostgresFlywayMigrationTest {
     @Autowired
     private UserRepository userRepository;
 
+    @Autowired
+    private CaseRepository caseRepository;
+
+    @Autowired
+    private EvidenceRepository evidenceRepository;
+
     @Test
-    @DisplayName("SEC-DB-001: Flyway V1, V2, V3, and V4 migrations execute successfully on real PostgreSQL container")
+    @DisplayName("SEC-DB-001: Flyway V1, V2, V3, V4, and V5 migrations execute successfully on real PostgreSQL container")
     void testFlywayMigrationsOnRealPostgreSql() {
         assertNotNull(flyway, "Flyway bean must be configured");
 
         MigrationInfo[] applied = flyway.info().applied();
-        assertEquals(4, applied.length, "V1, V2, V3, and V4 migrations must be applied to PostgreSQL");
+        assertEquals(5, applied.length, "V1, V2, V3, V4, and V5 migrations must be applied to PostgreSQL");
 
         assertEquals("1", applied[0].getVersion().getVersion());
         assertEquals("baseline", applied[0].getDescription());
@@ -75,6 +85,10 @@ public class PostgresFlywayMigrationTest {
         assertEquals("4", applied[3].getVersion().getVersion());
         assertEquals("case workflow schema", applied[3].getDescription());
         assertEquals(MigrationState.SUCCESS, applied[3].getState());
+
+        assertEquals("5", applied[4].getVersion().getVersion());
+        assertEquals("evidence storage schema", applied[4].getDescription());
+        assertEquals(MigrationState.SUCCESS, applied[4].getState());
     }
 
     @Test
@@ -103,6 +117,34 @@ public class PostgresFlywayMigrationTest {
         assertNotNull(retrieved.getOrganisation());
         assertEquals("ORG_PG_TEST", retrieved.getOrganisation().getCode());
         assertTrue(retrieved.isEnabled());
+
+        // Verify Evidence V5 schema integrity on real PostgreSQL
+        Case testCase = caseRepository.save(new Case(
+                UUID.randomUUID().toString(), org, "PG Evidence Test Case", "SECURITY_INCIDENT",
+                "HIGH", "OPEN", user, null, now
+        ));
+
+        String evidenceId = UUID.randomUUID().toString();
+        String storedName = UUID.randomUUID().toString();
+        Evidence ev = evidenceRepository.save(new Evidence(
+                evidenceId,
+                testCase,
+                "forensic_image.raw",
+                storedName,
+                "application/octet-stream",
+                4096L,
+                "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                1,
+                user,
+                now
+        ));
+
+        Evidence retrievedEv = evidenceRepository.findById(evidenceId).orElseThrow();
+        assertEquals("forensic_image.raw", retrievedEv.getOriginalName());
+        assertEquals(storedName, retrievedEv.getStoredName());
+        assertEquals("application/octet-stream", retrievedEv.getContentType());
+        assertEquals(4096L, retrievedEv.getSizeBytes());
+        assertEquals("e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", retrievedEv.getSha256Hex());
+        assertEquals(1, retrievedEv.getEncryptionVersion());
     }
 }
-

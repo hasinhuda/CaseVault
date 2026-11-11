@@ -15,6 +15,7 @@ import com.casevault.exception.ResourceNotFoundException;
 import com.casevault.model.Role;
 import com.casevault.security.CaseVaultUserPrincipal;
 import com.casevault.service.CaseAccessService;
+import com.casevault.service.EvidenceDownload;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.security.access.AccessDeniedException;
@@ -29,13 +30,20 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestPart;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
+import java.nio.charset.StandardCharsets;
 
 /**
  * Server-rendered Thymeleaf Web Controller for Case Management UI shell.
@@ -146,6 +154,7 @@ public class CaseWebController {
         CaseResponseDto caseItem = caseAccessService.getCaseById(id, principal);
         List<CaseNoteResponseDto> notes = caseAccessService.getCaseNotes(id, principal);
         List<RemediationActionResponseDto> actions = caseAccessService.getRemediationActions(id, principal);
+        List<com.casevault.dto.EvidenceResponseDto> evidence = caseAccessService.listEvidence(id, principal);
 
         Role role = principal.getRole();
         boolean isAssignedAnalyst = role == Role.ANALYST
@@ -167,6 +176,7 @@ public class CaseWebController {
         model.addAttribute("caseItem", caseItem);
         model.addAttribute("notes", notes);
         model.addAttribute("actions", actions);
+        model.addAttribute("evidence", evidence);
         model.addAttribute("activeTab", tab);
         model.addAttribute("canAddNotes", canAddNotes);
         model.addAttribute("canAddActions", canAddActions);
@@ -256,6 +266,41 @@ public class CaseWebController {
         caseAccessService.transitionRemediationActionStatus(id, actionId, dto, principal);
         redirectAttributes.addFlashAttribute("successMessage", "Action status updated to " + dto.getStatus());
         return "redirect:/cases/" + id + "?tab=actions";
+    }
+
+    @PostMapping(path = "/{id}/evidence", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("isAuthenticated()")
+    public String uploadEvidence(@PathVariable("id") String id,
+                                 @RequestPart("file") MultipartFile file,
+                                 @AuthenticationPrincipal CaseVaultUserPrincipal principal,
+                                 RedirectAttributes redirectAttributes) {
+        caseAccessService.uploadEvidence(id, file, principal);
+        redirectAttributes.addFlashAttribute("successMessage", "Evidence uploaded successfully.");
+        return "redirect:/cases/" + id + "?tab=evidence";
+    }
+
+    @GetMapping("/{caseId}/evidence/{evidenceId}")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<byte[]> downloadEvidence(@PathVariable String caseId,
+                                                   @PathVariable String evidenceId,
+                                                   @AuthenticationPrincipal CaseVaultUserPrincipal principal) {
+        EvidenceDownload download = caseAccessService.openEvidence(caseId, evidenceId, principal);
+        String safeFilename = sanitizeHeaderFilename(download.originalName());
+        ContentDisposition disposition = ContentDisposition.attachment()
+                .filename(safeFilename, StandardCharsets.UTF_8).build();
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, disposition.toString())
+                .header("X-Content-Type-Options", "nosniff")
+                .header(HttpHeaders.CACHE_CONTROL, "no-store")
+                .contentType(MediaType.APPLICATION_OCTET_STREAM)
+                .body(download.content());
+    }
+
+    private static String sanitizeHeaderFilename(String filename) {
+        if (filename == null || filename.isBlank()) {
+            return "evidence.bin";
+        }
+        return filename.replace("\r", "").replace("\n", "").replace("\"", "");
     }
 
     private void addCommonPrincipalAttributes(Model model, CaseVaultUserPrincipal principal) {

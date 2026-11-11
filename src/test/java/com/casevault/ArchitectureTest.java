@@ -30,6 +30,28 @@ class ArchitectureTest {
             .should().onlyBeAccessed().byAnyPackage("..repository..", "..service..", "..bootstrap..", "..config..", "..security..")
             .as("SEC-AUTHZ-ARCH-02: Repositories must only be accessed by service and security/bootstrap infrastructure")
             .because("Only services enforce tenant and role access policies");
+
+    @ArchTest
+    static final ArchRule evidenceStorageOnlyAccessedByServices = classes()
+            .that().resideInAPackage("..service..")
+            .and().haveNameMatching(".*(EvidenceStorageService|EvidenceStore).*")
+            .should().onlyBeAccessed().byAnyPackage("..service..")
+            .as("SEC-EVID-ARCH-01: Evidence storage boundary is service-only")
+            .because("controllers must use CaseAccessService and never access encrypted storage directly");
+
+    @ArchTest
+    static final ArchRule evidenceRepositoryOnlyAccessedByServices = classes()
+            .that().haveNameMatching(".*EvidenceRepository.*")
+            .should().onlyBeAccessed().byAnyPackage("..service..")
+            .as("SEC-EVID-ARCH-02: EvidenceRepository is accessed only by service classes")
+            .because("all evidence queries and access policies must be strictly mediated by service layer");
+
+    @ArchTest
+    static final ArchRule controllersMustNotAccessEvidenceRepositoryOrStorage = noClasses()
+            .that().resideInAPackage("..controller..")
+            .should().dependOnClassesThat().haveNameMatching(".*(EvidenceRepository|EvidenceStorageService|EvidenceStore).*")
+            .as("SEC-EVID-ARCH-03: Controllers must not access EvidenceRepository or storage classes directly")
+            .because("controllers must strictly invoke CaseAccessService for all evidence operations");
 }
 
 

@@ -46,6 +46,8 @@
                        th:class="${activeTab == 'notes' ? 'active' : ''}">Investigation Notes (<span th:text="${#lists.size(notes)}">0</span>)</a>
                     <a th:href="@{/cases/{id}(id=${caseItem.id}, tab='actions')}"
                        th:class="${activeTab == 'actions' ? 'active' : ''}">Remediation Actions (<span th:text="${#lists.size(actions)}">0</span>)</a>
+                    <a th:href="@{/cases/{id}(id=${caseItem.id}, tab='evidence')}"
+                       th:class="${activeTab == 'evidence' ? 'active' : ''}">Evidence (<span th:text="${#lists.size(evidence)}">0</span>)</a>
                 </nav>
 
                 <!-- TAB: OVERVIEW -->
@@ -154,6 +156,41 @@
                                         </div>
                                     </form>
                                 </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB: EVIDENCE -->
+                <div th:if="${activeTab == 'evidence'}">
+                    <div th:if="${role == 'CLIENT' or role == 'ANALYST'}" class="card">
+                        <h2 class="card-title">Upload Evidence</h2>
+                        <form th:action="@{/cases/{id}/evidence(id=${caseItem.id})}" method="post" enctype="multipart/form-data">
+                            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                            <div class="form-group">
+                                <label for="evidence-file">Evidence file</label>
+                                <input id="evidence-file" name="file" type="file" class="form-control" required/>
+                            </div>
+                            <button type="submit" class="btn btn-primary btn-sm">Upload encrypted evidence</button>
+                        </form>
+                    </div>
+                    <div class="card">
+                        <h2 class="card-title">Stored Evidence</h2>
+                        <div th:if="${#lists.isEmpty(evidence)}" class="empty-state">
+                            <p>No evidence has been uploaded for this case.</p>
+                        </div>
+                        <div th:if="${not #lists.isEmpty(evidence)}">
+                            <div th:each="item : ${evidence}" class="action-row">
+                                <div>
+                                    <div class="action-desc" th:text="${item.originalName}">evidence.pdf</div>
+                                    <div class="action-meta">
+                                        <span th:text="${item.sizeBytes}">0</span><span> bytes · SHA-256: </span>
+                                        <span th:text="${#strings.substring(item.sha256Hex, 0, 12)}">hash</span>
+                                        <span> · Uploaded by: </span><span th:text="${item.uploadedByUsername}">uploader</span>
+                                        <span> · </span><span th:text="${item.createdAt}">date</span>
+                                    </div>
+                                </div>
+                                <a class="btn btn-secondary btn-sm" th:href="@{/cases/{caseId}/evidence/{evidenceId}(caseId=${caseItem.id}, evidenceId=${item.id})}">Download</a>
                             </div>
                         </div>
                     </div>

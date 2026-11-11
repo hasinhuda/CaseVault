@@ -14,6 +14,7 @@ import com.casevault.dto.UpdateRemediationActionStatusRequestDto;
 import com.casevault.dto.UserSummaryDto;
 import com.casevault.security.CaseVaultUserPrincipal;
 import org.springframework.data.domain.Page;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -93,4 +94,10 @@ public interface CaseAccessService {
      * Retrieves Evidence metadata by ID, enforcing tenant isolation inherited from the parent case.
      */
     EvidenceResponseDto getEvidenceById(String evidenceId, CaseVaultUserPrincipal principal);
+
+    EvidenceResponseDto uploadEvidence(String caseId, MultipartFile file, CaseVaultUserPrincipal principal);
+
+    List<EvidenceResponseDto> listEvidence(String caseId, CaseVaultUserPrincipal principal);
+
+    EvidenceDownload openEvidence(String caseId, String evidenceId, CaseVaultUserPrincipal principal);
 }
