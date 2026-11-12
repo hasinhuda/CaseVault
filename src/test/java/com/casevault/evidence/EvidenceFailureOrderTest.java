@@ -46,6 +46,7 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.reset;
 
 @SpringBootTest
+@org.junit.jupiter.api.extension.ExtendWith(com.casevault.support.RestoreBootstrapDataAfterAll.class)
 public class EvidenceFailureOrderTest {
 
     @TempDir
@@ -78,11 +79,16 @@ public class EvidenceFailureOrderTest {
     private Case testCase;
     private CaseVaultUserPrincipal clientPrincipal;
 
+    @org.springframework.beans.factory.annotation.Autowired
+    private org.springframework.jdbc.core.JdbcTemplate cleanupJdbc;
+
     @BeforeEach
     void setUp() throws IOException {
         reset(evidenceRepository);
         reset(evidenceStorageService);
 
+        // F-008: FK-safe cleanup (reports, actions, notes, evidence, cases); other classes may have committed rows
+        com.casevault.support.TestDatabaseCleaner.deleteCasesAndDependents(cleanupJdbc);
         evidenceRepository.deleteAll();
         caseRepository.deleteAll();
         userRepository.deleteAll();

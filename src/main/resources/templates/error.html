@@ -1,20 +1,17 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org" lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<head th:replace="~{layout :: htmlhead('Error')}">
     <title>Error - CaseVault</title>
-    <link rel="stylesheet" th:href="@{/css/app.css}"/>
 </head>
 <body class="login-body">
 <a href="#error-main" class="skip-link">Skip to error details</a>
 
-<div id="error-main" class="login-card form-card-max">
+<main id="error-main" class="login-card form-card-max">
     <h1 th:text="${status != null ? 'HTTP ' + status : 'Error'}">Error</h1>
 
     <div class="alert alert-danger" role="alert">
         <strong th:text="${error != null ? error : 'An error occurred'}">Error Type</strong>
-        <p th:text="${message != null ? message : 'Operation could not be completed.'}" class="mt-16">Error explanation</p>
+        <p th:text="${message != null and !#strings.isEmpty(message) ? message : 'The request could not be completed.'}" class="mt-16">Error explanation</p>
     </div>
 
     <div class="card">
@@ -26,7 +23,6 @@
     <div class="mt-16">
         <a th:href="@{/dashboard}" class="btn btn-primary btn-block">Return to Dashboard</a>
     </div>
-</div>
+</main>
 </body>
 </html>
-

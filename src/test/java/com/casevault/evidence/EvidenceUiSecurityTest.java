@@ -42,6 +42,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @SpringBootTest
 @AutoConfigureMockMvc
+@org.junit.jupiter.api.extension.ExtendWith(com.casevault.support.RestoreBootstrapDataAfterAll.class)
 public class EvidenceUiSecurityTest {
 
     @Autowired
@@ -66,8 +67,13 @@ public class EvidenceUiSecurityTest {
     private Case aCase;
     private Evidence xssEvidence;
 
+    @org.springframework.beans.factory.annotation.Autowired
+    private org.springframework.jdbc.core.JdbcTemplate cleanupJdbc;
+
     @BeforeEach
     void setUp() {
+        // F-008: FK-safe cleanup (reports, actions, notes, evidence, cases); other classes may have committed rows
+        com.casevault.support.TestDatabaseCleaner.deleteCasesAndDependents(cleanupJdbc);
         evidenceRepository.deleteAll();
         caseRepository.deleteAll();
         userRepository.deleteAll();

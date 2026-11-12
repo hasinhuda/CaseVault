@@ -69,3 +69,6 @@ The internal consultancy organisation is identified deterministically by organis
 - No API endpoint exposes organisation creation or code modification.
 - The organisation code is never accepted from client input; it is resolved server-side from the authenticated principal's persisted organisation record.
 
+## Addendum (Phase 8C): status codes for unauthorised access
+
+Decision F-003 by the project owner, recorded in [findings-log.md](../assurance/findings-log.md): an object the caller cannot see (another organisation, or a role that has no access to it, for example AUDITOR_ADMIN on case content) returns HTTP 404. A forbidden action on an object the caller CAN see returns HTTP 403. Both write one ACCESS_DENIED audit event. The reason for 404 is to hide whether an object exists; for a visible object there is nothing left to hide, and 403 tells the user the truth. The wording of SR-02 in [requirements.md](../requirements.md) was clarified by an appended bullet; the original text is unchanged. The behaviour is pinned by SEC-HDR-404-01..03.

@@ -1,0 +1,8 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head><title>Test only</title></head>
+<body>
+<!-- Test-only template: the expression fails while the page is rendered (null method call). -->
+<p th:text="${undefinedModelValue.secretMethod()}">never shown</p>
+</body>
+</html>

@@ -27,7 +27,7 @@ import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter;
-import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
+import org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher;
 import org.springframework.security.web.util.matcher.MediaTypeRequestMatcher;
 import org.springframework.security.web.util.matcher.RequestMatcher;
 
@@ -62,9 +62,12 @@ public class SecurityConfig {
     }
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http, SessionRegistry sessionRegistry) throws Exception {
+    public SecurityFilterChain securityFilterChain(HttpSecurity http, SessionRegistry sessionRegistry,
+                                                   com.casevault.ratelimit.RateLimitFilter rateLimitFilter,
+                                                   @org.springframework.beans.factory.annotation.Value("${casevault.security.hsts-enabled:false}") boolean hstsEnabled,
+                                                   @org.springframework.beans.factory.annotation.Value("${casevault.session.max-per-user:3}") int maxSessionsPerUser) throws Exception {
         LinkedHashMap<RequestMatcher, AuthenticationEntryPoint> entryPoints = new LinkedHashMap<>();
-        entryPoints.put(AntPathRequestMatcher.antMatcher("/api/**"), new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED));
+        entryPoints.put(PathPatternRequestMatcher.withDefaults().matcher("/api/**"), new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED));
         entryPoints.put(new MediaTypeRequestMatcher(MediaType.APPLICATION_JSON), new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED));
 
         DelegatingAuthenticationEntryPoint delegatingEntryPoint = new DelegatingAuthenticationEntryPoint(entryPoints);
@@ -111,14 +114,35 @@ public class SecurityConfig {
                 .referrerPolicy(referrer -> referrer.policy(ReferrerPolicyHeaderWriter.ReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN))
                 .permissionsPolicyHeader(permissions -> permissions.policy("camera=(), microphone=(), geolocation=()"))
                 .contentSecurityPolicy(csp -> csp.policyDirectives("default-src 'self'; frame-ancestors 'none'; object-src 'none'"))
+                // Phase 8B: a second CSP header with the remaining directives. Several CSP headers are all enforced
+                // (the browser applies the intersection), so the first, long-standing policy value stays byte for
+                // byte unchanged (TEST-BASE-002) while base-uri, form-action, script-src and style-src are added.
+                // No 'unsafe-inline' and no 'unsafe-eval' anywhere.
+                .addHeaderWriter((request, response) -> response.addHeader("Content-Security-Policy",
+                        "base-uri 'self'; form-action 'self'; script-src 'self'; style-src 'self'"))
+                .crossOriginOpenerPolicy(coop -> coop.policy(
+                        org.springframework.security.web.header.writers.CrossOriginOpenerPolicyHeaderWriter.CrossOriginOpenerPolicy.SAME_ORIGIN))
+                .crossOriginResourcePolicy(corp -> corp.policy(
+                        org.springframework.security.web.header.writers.CrossOriginResourcePolicyHeaderWriter.CrossOriginResourcePolicy.SAME_ORIGIN))
+                // HSTS only where the profile says so (prod-like). Browsers honour it over https only; Spring
+                // Security additionally writes it only on secure requests.
+                .httpStrictTransportSecurity(hsts -> {
+                    if (hstsEnabled) {
+                        hsts.includeSubDomains(true).maxAgeInSeconds(31_536_000L);
+                    } else {
+                        hsts.disable();
+                    }
+                })
             )
             .sessionManagement(session -> session
                 .sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED)
                 .sessionFixation(fixation -> fixation.changeSessionId())
-                // Unlimited sessions per user, but every session is registered so an admin can expire them
-                // (Phase 7B revoke-sessions). The expired session is refused on its next request.
+                // Phase 8C: at most casevault.session.max-per-user (default 3) concurrent sessions per user. The
+                // OLDEST session is expired when the cap is exceeded (the new login wins). Every session is also
+                // registered so an admin can expire them (Phase 7B revoke-sessions). An expired session is refused
+                // on its next request.
                 .sessionConcurrency(concurrency -> concurrency
-                    .maximumSessions(-1)
+                    .maximumSessions(maxSessionsPerUser)
                     .sessionRegistry(sessionRegistry)
                     .expiredSessionStrategy(event -> {
                         jakarta.servlet.http.HttpServletRequest request = event.getRequest();
@@ -133,6 +157,8 @@ public class SecurityConfig {
                     }))
             )
             .addFilterBefore(new SessionAbsoluteTimeoutFilter(), UsernamePasswordAuthenticationFilter.class)
+            // Phase 8A: in-process rate limiting; before the login filter so every attempt is counted.
+            .addFilterBefore(rateLimitFilter, UsernamePasswordAuthenticationFilter.class)
             .addFilterAfter(new UserStatusEnforcementFilter(userRepository), UsernamePasswordAuthenticationFilter.class);
 
         return http.build();

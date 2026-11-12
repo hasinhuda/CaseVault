@@ -67,6 +67,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @AutoConfigureMockMvc
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
+// Phase 8A: this class performs many real logins from one address; the login limiter keeps its default
+// behaviour but with a higher limit so the unrelated scenarios below are not throttled.
+@org.springframework.test.context.TestPropertySource(properties = "casevault.ratelimit.login-limit=100000")
 class AdminHttpTest {
 
     private static final String PASSWORD = "Admin-Test-Password-1234!";

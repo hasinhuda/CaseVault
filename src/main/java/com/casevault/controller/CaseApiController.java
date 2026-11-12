@@ -97,7 +97,9 @@ public class CaseApiController {
      * Analyst assignment endpoint: POST /api/cases/{id}/assign (FR-05)
      */
     @PostMapping("/cases/{id}/assign")
-    @PreAuthorize("hasRole('MANAGER')")
+    // Visibility first, then the role: the service answers 404 for a case the caller may not see (including
+    // AUDITOR_ADMIN, SR-07) and 403 only for a visible case when the caller is not a MANAGER.
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<CaseResponseDto> assignAnalyst(
             @PathVariable("id") String id,
             @Valid @RequestBody AssignAnalystRequestDto dto,

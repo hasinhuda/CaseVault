@@ -98,3 +98,39 @@ This backlog tracks identified technical debt, deferred security enhancements, a
 - The concurrent-approval test runs on H2; the PostgreSQL behaviour of the same versioned update is not tested.
 - Concurrent edits or submits of one report are protected by the same lock but have no concurrent test.
 - Contrast and keyboard behaviour of the report pages were not measured with a tool: VERIFY MANUALLY.
+
+## Phase 8A rate-limit backlog (DRAFT)
+
+- Rate-limit events are not in the audit chain (deliberate, to avoid audit flooding); only one WARN log line per limiter and window exists.
+- Limiter state is per node and in memory, lost on restart; there is no distributed limiter.
+- The limits are defaults, not tuned against real traffic.
+- No CAPTCHA and no progressive delay after repeated limited attempts.
+- Address-based login limiting can affect legitimate users behind one shared NAT; a trusted reverse proxy (Phase 12) and the forwarded-for setting must be reviewed together.
+- Fixed-window counting allows up to twice the limit around a window boundary; a token bucket is a possible refinement.
+- An attacker rotating more distinct keys than the cap (10000) can reset other keys' counters.
+- User-based limits cover authenticated requests only; other unauthenticated URLs are not limited.
+- Reading endpoints (report and case detail, downloads) are not limited.
+
+
+## Phase 8B headers and errors backlog (DRAFT)
+
+- Closed by tests SEC-HDR-01 and SEC-HDR-04: "audit pages need Cache-Control no-store" (Phase 6C) and "admin pages need Cache-Control no-store" (Phase 7B). The old rows stay as history.
+- DECISION F-003: forbidden actions on a visible case return 403 while SR-02 says 404; keep and reword SR-02, or switch the routes to 404 and rewrite the pinned Phase 3/4 tests.
+- The case list, the new-case form and case creation by AUDITOR_ADMIN are 404 without an ACCESS_DENIED audit event (no object is targeted); decide whether they should be audited.
+- The CSP is sent as two headers to keep the original value unchanged; merge them when TEST-BASE-002 may be updated. Check the CSP in a real browser console: VERIFY MANUALLY.
+- Referrer-Policy stays strict-origin-when-cross-origin (SR-09 text); no-referrer is possible and stricter.
+- Permissions-Policy denies only camera, microphone and geolocation; extend it (payment, usb, sensors) when its assertion may be updated.
+- Static CSS is served no-store; add a cache lifetime with a content hash in the file name if load time matters.
+- HSTS needs TLS; verify it behind the reverse proxy in Phase 12, and consider preload only after that.
+- A real oversize upload over HTTP is not tested; the container may drop the connection.
+- The 429 page and the 500 page after a failed audit append use their own id instead of the request id (header, page and log line agree with each other).
+
+
+## Phase 8C session, log and scanner backlog (DRAFT)
+
+- Addressed by Phase 8C (new line; the Phase 2 line above stays as history): "Unlimited concurrent sessions per user" is now capped by `casevault.session.max-per-user` (default 3, oldest session expires), tests SEC-SESSION-01..06. The registry is in memory and per node; a cluster needs a shared registry.
+- Decision F-003 accepted (policy clarified): 404 for invisible objects, 403 for forbidden actions on visible ones. The Phase 8B backlog line "DECISION F-003" is closed by this line.
+- The two Content-Security-Policy headers were NOT merged: `RateLimitHttpTest` pins the exact original value and only `TEST-BASE-002` may be changed. Merge them when that assertion may be updated, then update `HealthEndpointTest`, `RateLimitHttpTest`, `HeaderAuditTest` and `HstsProfileTest` together.
+- Log hygiene was proven for the listed flows and marker strings only; a periodic review of new log statements is still needed (ArchUnit has no rule against logging request parameters).
+- Cookie flags were checked as headers on a local server, not in a real browser and not over TLS: VERIFY MANUALLY with the browser steps in the phase report, and again behind the Phase 12 reverse proxy.
+- Session cap is per user and counts registered sessions; consider an idle-session sweep if users hit the cap because of forgotten browser tabs.

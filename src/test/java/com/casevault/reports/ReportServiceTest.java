@@ -129,6 +129,7 @@ class ReportServiceTest {
 
     @AfterEach
     void tearDown() {
+        com.casevault.support.TestDatabaseCleaner.deleteReports(jdbc); // F-008: leave no committed report rows behind
         SecurityContextHolder.clearContext();
         rootLogger.detachAppender(logs);
         logs.stop();

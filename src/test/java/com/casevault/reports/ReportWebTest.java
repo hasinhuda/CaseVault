@@ -65,6 +65,9 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 /** Phase 7C: report pages over HTTP (real filter chain, real logins through /login, H2, chained audit log). */
 @SpringBootTest
 @AutoConfigureMockMvc
+// Phase 8A: this class performs many real logins from one address; the login limiter keeps its default
+// behaviour but with a higher limit so the unrelated scenarios below are not throttled.
+@org.springframework.test.context.TestPropertySource(properties = "casevault.ratelimit.login-limit=100000")
 class ReportWebTest {
 
     private static final String PASSWORD = "Report-Web-Password-1234!";
@@ -150,6 +153,7 @@ class ReportWebTest {
 
     @AfterEach
     void tearDown() {
+        com.casevault.support.TestDatabaseCleaner.deleteReports(jdbc); // F-008: leave no committed report rows behind
         rootLogger.detachAppender(logs);
         logs.stop();
     }

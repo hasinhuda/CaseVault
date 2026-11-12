@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head th:replace="~{layout :: htmlhead('Too many requests')}">
+    <title>Too many requests - CaseVault</title>
+</head>
+<body class="login-body">
+<a href="#limited-main" class="skip-link">Skip to details</a>
+
+<main id="limited-main" class="login-card form-card-max">
+    <h1>HTTP 429</h1>
+
+    <div class="alert alert-danger" role="alert">
+        <strong>Too many requests</strong>
+        <p class="mt-16">You have sent too many requests in a short time. Nothing was changed. Please wait and try again.</p>
+        <p>Try again in about <span th:text="${retryAfterSeconds}">60</span> seconds.</p>
+    </div>
+
+    <div class="card">
+        <div class="metadata-label">Incident Correlation ID</div>
+        <code th:text="${correlationId}" class="metadata-value">00000000-0000-0000-0000-000000000000</code>
+    </div>
+
+    <div class="mt-16">
+        <a th:href="@{/login}" class="btn btn-primary btn-block">Back to sign in</a>
+    </div>
+</main>
+</body>
+</html>

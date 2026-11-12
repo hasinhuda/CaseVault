@@ -1,0 +1,20 @@
+# ADR 0007: In-Process Rate Limiting
+
+## Status
+Accepted (Phase 8A, DRAFT until reviewed). Related: SR-04 (credential lockout and anti-enumeration) in [requirements.md](../requirements.md), threat model section "Automated Login, Enumeration & Resource Exhaustion" in [threat-model.md](../threat-model.md).
+
+## Context
+Account lockout (5 failures) protects one account but not the server: an attacker can spread attempts over many usernames, burn Argon2 CPU time, flood search, or flood uploads and report writes. A limiter had to be added without a new dependency.
+
+## Decision
+- **Self-written fixed-window counter** per (limiter name, key) in [InMemoryRateLimiter.java](../../src/main/java/com/casevault/ratelimit/InMemoryRateLimiter.java), with an injectable `java.time.Clock` so tests never sleep. Every counter update is one atomic `ConcurrentHashMap.compute`, so parallel requests cannot admit more than the limit. A fixed window can admit up to twice the limit around a window boundary; this is accepted for simplicity.
+- **Bounded memory:** at most `casevault.ratelimit.max-tracked-keys` (default 10000) windows. New keys are inserted under one lock; when the map is full, expired windows are removed first and then the oldest ones. Residual risk: an attacker rotating more than the cap of distinct keys can push out other keys' counters (a reset), at the cost of one request per evicted key.
+- **Where:** one filter, [RateLimitFilter.java](../../src/main/java/com/casevault/ratelimit/RateLimitFilter.java), in the security chain before the username/password filter. A limited request is answered there and never reaches a controller, so it cannot change state. The container registration of the filter is switched off (`RateLimitConfig`) so it runs only inside the chain.
+- **What is limited (defaults, all configurable under `casevault.ratelimit.*`, plus `enabled`):** `POST /login` per client address (10 per 60 s, every attempt counts, success or failure, before credentials are checked, so the answer never depends on the username); HTTP Basic requests to `/api/**` per client address (60 per 60 s); case search (`GET /cases`, `/api/cases`, `/api/cases/search` with query parameters) per authenticated user (60); evidence upload per user (10); report writes (create, update, submit, approve share one counter) per user (30). Path matching uses segment comparison, not regular expressions.
+- **Client address:** `request.getRemoteAddr()`. `X-Forwarded-For` is ignored unless `casevault.ratelimit.trust-forwarded-for=true`, which is only for a known reverse proxy (planned for Phase 12). With the flag on, the LAST entry is used (the one the proxy appended; everything before it is client controlled) and it must look like an address, otherwise the remote address is used. This assumes exactly one trusted proxy that appends the client address.
+- **Response:** HTTP 429 with a `Retry-After` header (remaining seconds of the window), `Cache-Control: no-store`, and a Thymeleaf page (`rate-limited.html`, `th:text` only, base layout head, no script, CSP unchanged) with a correlation id. `/api/**` gets a fixed plain-text body. Nothing about the limiter, key, address or input is shown. If the template cannot be rendered a fixed plain-text body is written.
+- **Audit and logging decision:** no audit-chain row per limited request (an attacker could flood the audit table). One WARN line per limiter and window: `Rate limit exceeded limiter=<fixed label> correlationId=<uuid>`; no address, username or session id. Rate-limit events are therefore not in the audit chain (backlog).
+- **Existing lockout stays.** A limited login attempt is not processed, so it does not raise the failed-login counter.
+
+## Honest limits
+In-process and per node (a second node has its own counters), lost on restart; address-based, so users behind one shared NAT share the login budget and can lock each other out for a window; no CAPTCHA, no progressive delay; defaults are not tuned; user-based limits apply only to authenticated requests.

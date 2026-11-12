@@ -34,6 +34,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @SpringBootTest
 @AutoConfigureMockMvc
+@org.springframework.test.context.TestPropertySource(properties = "casevault.ratelimit.login-limit=100000")
 public class SessionLifecycleSecurityTest {
 
     @Autowired
