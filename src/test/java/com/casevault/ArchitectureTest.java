@@ -140,6 +140,23 @@ class ArchitectureTest {
             .because("report authorisation, four-eyes and state rules live in the service layer");
 
     @ArchTest
+    static final ArchRule controllersAndServicesDoNotUseRateLimiter = noClasses()
+            .that().resideInAnyPackage("..controller..", "..service..", "..repository..", "..model..")
+            .should().dependOnClassesThat().resideInAPackage("..ratelimit..")
+            .as("SEC-RATE-ARCH-01: Controllers, services and repositories do not depend on the rate limiter")
+            .because("limiting happens in the security filter chain before any controller runs, so a limited request never reaches business code");
+
+    @ArchTest
+    static final ArchRule rateLimiterInternalsStayInsideThePackage = classes()
+            .that().haveSimpleNameStartingWith("InMemoryRateLimiter")
+            .or().haveSimpleName("RateLimitFilter")
+            .or().haveSimpleName("ThymeleafBlockedPageRenderer")
+            .or().haveSimpleName("RateLimitProperties")
+            .should().onlyBeAccessed().byAnyPackage("..ratelimit..", "..config..")
+            .as("SEC-RATE-ARCH-02: Limiter internals are used only inside the ratelimit package and by the security configuration")
+            .because("the rest of the application must only see the RateLimiter and RateLimitSettings interfaces, if at all");
+
+    @ArchTest
     static final ArchRule controllersMustNotAccessEvidenceRepositoryOrStorage = noClasses()
             .that().resideInAPackage("..controller..")
             .should().dependOnClassesThat().haveNameMatching(".*(EvidenceRepository|EvidenceStorageService|EvidenceStore).*")

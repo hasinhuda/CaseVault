@@ -98,3 +98,15 @@ This backlog tracks identified technical debt, deferred security enhancements, a
 - The concurrent-approval test runs on H2; the PostgreSQL behaviour of the same versioned update is not tested.
 - Concurrent edits or submits of one report are protected by the same lock but have no concurrent test.
 - Contrast and keyboard behaviour of the report pages were not measured with a tool: VERIFY MANUALLY.
+
+## Phase 8A rate-limit backlog (DRAFT)
+
+- Rate-limit events are not in the audit chain (deliberate, to avoid audit flooding); only one WARN log line per limiter and window exists.
+- Limiter state is per node and in memory, lost on restart; there is no distributed limiter.
+- The limits are defaults, not tuned against real traffic.
+- No CAPTCHA and no progressive delay after repeated limited attempts.
+- Address-based login limiting can affect legitimate users behind one shared NAT; a trusted reverse proxy (Phase 12) and the forwarded-for setting must be reviewed together.
+- Fixed-window counting allows up to twice the limit around a window boundary; a token bucket is a possible refinement.
+- An attacker rotating more distinct keys than the cap (10000) can reset other keys' counters.
+- User-based limits cover authenticated requests only; other unauthenticated URLs are not limited.
+- Reading endpoints (report and case detail, downloads) are not limited.

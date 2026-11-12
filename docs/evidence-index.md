@@ -182,3 +182,15 @@ All Phase 5 evidence requirements (Groups A through G) verified. Phase 6 cryptog
 | FR-13 (reports, HTTP) | One REPORT_TRANSITION per successful transition over HTTP; no body in audit rows or logs; append failure shows the safe error page | [DefaultReportService.java](../src/main/java/com/casevault/service/DefaultReportService.java) | SEC-REPORT-WEB-09, SEC-REPORT-WEB-11 | CI `build-test-coverage` | Verified |
 | REPORT-LOCK | Optimistic locking: concurrent approval has one winner (HTTP 409 for the loser), one event | [V10__report_version.sql](../src/main/resources/db/migration/V10__report_version.sql), [Report.java](../src/main/java/com/casevault/model/Report.java) | SEC-REPORT-WEB-10, SEC-DB-001 | CI `build-test-coverage` | Verified on H2 and migration on PostgreSQL |
 | ARCH-REPORT-WEB | The report web controller depends on the service interface and DTOs only | [ArchitectureTest.java](../src/test/java/com/casevault/ArchitectureTest.java) | SEC-REPORT-ARCH-04 | CI `build-test-coverage` | Verified |
+
+## Phase 8A: Rate Limiting (DRAFT)
+
+| Requirement ID | Description | Source / Config | Automated Test / Gate | CI Verification | Status |
+|---|---|---|---|---|---|
+| SR-04 (extension) | Per-address login rate limit in addition to lockout; identical 429 for known and unknown usernames; limited attempts do not change lockout state | [RateLimitFilter.java](../src/main/java/com/casevault/ratelimit/RateLimitFilter.java), [ADR 0007](adr/0007-rate-limiting.md) | SEC-RATE-WEB-01, -02, -03 ([RateLimitHttpTest.java](../src/test/java/com/casevault/ratelimit/RateLimitHttpTest.java)) | CI `build-test-coverage` | Verified over HTTP |
+| RATE-EXHAUST (threat-model section 10) | Resource exhaustion: search, upload and report-write limits per user; limited requests never reach controllers and change nothing | [RateLimitFilter.java](../src/main/java/com/casevault/ratelimit/RateLimitFilter.java) | SEC-RATE-WEB-08, -09, -10 | CI `build-test-coverage` | Verified over HTTP |
+| RATE-ADDR | Client address is getRemoteAddr(); X-Forwarded-For ignored unless explicitly enabled; spoofing does not bypass | [RateLimitProperties.java](../src/main/java/com/casevault/ratelimit/RateLimitProperties.java) | SEC-RATE-WEB-04, -12, -13 | CI `build-test-coverage` | Verified |
+| RATE-MEM | Bounded memory and thread safety of the limiter | [InMemoryRateLimiter.java](../src/main/java/com/casevault/ratelimit/InMemoryRateLimiter.java) | SEC-RATE-03, -04, -05, SEC-RATE-WEB-06 | CI `build-test-coverage` | Verified |
+| RATE-LOG | No audit row per limited request; one WARN per limiter and window without address or username | [ADR 0007](adr/0007-rate-limiting.md) | SEC-RATE-WEB-05 | CI `build-test-coverage` | Verified |
+| RATE-ARCH | Controllers and services do not depend on the limiter | [ArchitectureTest.java](../src/test/java/com/casevault/ArchitectureTest.java) | SEC-RATE-ARCH-01, -02 | CI `build-test-coverage` | Verified |
+| RATE-DOC | Limit table, attack-to-test table, honest limits | [headers-and-rate-limit.md](assurance/headers-and-rate-limit.md) | n/a | n/a | Documentation |

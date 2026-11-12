@@ -73,6 +73,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /** Phase 6B: the chained audit log is wired into login, cases and evidence (H2, real Spring context). */
 @SpringBootTest
 @AutoConfigureMockMvc
+// Phase 8A: this class performs many real logins from one address; the login limiter keeps its default
+// behaviour but with a higher limit so the unrelated scenarios below are not throttled.
+@org.springframework.test.context.TestPropertySource(properties = "casevault.ratelimit.login-limit=100000")
 class AuditWiringTest {
 
     private static final String PASSWORD = "Wire-Test-Password-1234!";
