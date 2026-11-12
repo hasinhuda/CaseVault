@@ -48,8 +48,8 @@ class ErrorPageLinksHttpTest {
     private static final String PASSWORD = "Error-Links-Password-1234!";
     private static final String BACK_TO_LOGIN = "Back to login";
     private static final String DASHBOARD = "Return to Dashboard";
-    private static final Pattern LOGIN_LINK = Pattern.compile("href=\"/login(;jsessionid=[^\"]*)?\"");
-    private static final Pattern DASHBOARD_LINK = Pattern.compile("href=\"/dashboard(;jsessionid=[^\"]*)?\"");
+    private static final Pattern LOGIN_LINK = Pattern.compile("href=\"/login\"");
+    private static final Pattern DASHBOARD_LINK = Pattern.compile("href=\"/dashboard\"");
 
     @TempDir
     static Path sharedTempDir;
@@ -111,7 +111,8 @@ class ErrorPageLinksHttpTest {
     private static void assertBackToLoginOnly(HttpResponse<String> r, int status) {
         assertEquals(status, r.statusCode(), r.body());
         assertTrue(r.body().contains(BACK_TO_LOGIN), "signed-out visitor sees Back to login");
-        // the optional ;jsessionid suffix is URL rewriting that Tomcat adds after a signed-out CSRF failure (finding F-010)
+        assertFalse(r.body().toLowerCase().contains(";jsessionid"), "no session id in any link (F-010)");
+        assertTrue(r.body().contains("href=\"/css/app.css\""), "exact stylesheet link");
         assertTrue(LOGIN_LINK.matcher(r.body()).find(), "the link goes to /login");
         assertFalse(r.body().contains(DASHBOARD), "signed-out visitor must not see the Dashboard link");
         assertFalse(DASHBOARD_LINK.matcher(r.body()).find());

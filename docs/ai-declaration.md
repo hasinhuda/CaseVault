@@ -31,3 +31,5 @@ This document transparently tracks all AI tooling and assistant usage during the
 - 2026-11-13: Assisted with Phase 9A read-only UI inventory (docs/assurance/ui-inventory.md: templates, navigation per role, accessibility and contrast, consistency, proposed 9B-9D changes); docs only, no source change; verified via mvnw verify. [DRAFT]
 
 - 2026-11-13: Assisted with Phase 9B error-page and 429-page links by sign-in state, honest auditor dashboard status (finding F-009), .text-muted and one auditor label; observed F-010 (not fixed); new tests UI-ERR, UI-RATE, UI-DASH, UI-CSS, UI-NAV; verified via mvnw verify in two run orders. [DRAFT]
+
+- 2026-11-13: Assisted with fixing F-010 (session id in URLs on the signed-out CSRF 403 page): reproduced with real HTTP, set server.servlet.session.tracking-modes=cookie, tightened link assertions, added SEC-SESSURL-01..04; verified via mvnw verify in two run orders. [DRAFT]
