@@ -34,7 +34,7 @@
             Cases
         </a>
         <span th:if="${role == 'AUDITOR_ADMIN'}" class="sidebar-restricted-tag" aria-disabled="true">
-            Cases (Quarantined)
+            Cases (Restricted)
         </span>
         <a th:if="${role == 'AUDITOR_ADMIN'}" th:href="@{/audit}" th:class="${activeMenu == 'audit' ? 'sidebar-link active' : 'sidebar-link'}">
             Audit log

@@ -1,5 +1,6 @@
 package com.casevault.ratelimit;
 
+import com.casevault.web.SignedInState;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.web.servlet.View;
@@ -45,8 +46,9 @@ public class ThymeleafBlockedPageRenderer implements BlockedPageRenderer {
             View view = viewLookup.lookup(VIEW_NAME);
             if (view != null) {
                 response.setContentType("text/html;charset=UTF-8");
-                renderView(view, Map.of("correlationId", correlationId, "retryAfterSeconds", retryAfterSeconds),
-                        request, response);
+                // Phase 9B: only the link on the page depends on this flag (Dashboard or Back to sign in).
+                renderView(view, Map.of("correlationId", correlationId, "retryAfterSeconds", retryAfterSeconds,
+                        "signedIn", SignedInState.isSignedIn()), request, response);
                 return;
             }
         } catch (IOException | RuntimeException e) {

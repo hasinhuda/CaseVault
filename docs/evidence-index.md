@@ -224,3 +224,23 @@ All Phase 5 evidence requirements (Groups A through G) verified. Phase 6 cryptog
 |---|---|---|---|---|---|
 | TEST-ISOLATION (F-008) | Test classes that share the cached context and H2 database do not depend on run order: FK-safe cleanup of cases and dependents, reports removed by the classes that create them, bootstrap accounts restored after classes that wipe all users | [TestDatabaseCleaner.java](../src/test/java/com/casevault/support/TestDatabaseCleaner.java), [RestoreBootstrapDataAfterAll.java](../src/test/java/com/casevault/support/RestoreBootstrapDataAfterAll.java) | Full suite in default, `reversealphabetical` and `alphabetical` order (319 tests each) | CI `build-test-coverage` (Linux filesystem order) | Verified locally; Linux CI run pending |
 | TEST-ISOLATION-GUARD (F-008) | Regression guard: a class that leaves committed report rows fails with a clear message and the row counts of every class are printed as `[ROWS]` lines | [LeftoverRowsGuard.java](../src/test/java/com/casevault/support/LeftoverRowsGuard.java) | Demonstrated by removing one cleanup (ReportServiceTest failed: left 13 rows), then restored | CI `build-test-coverage` | Verified |
+
+## Phase 9A: UI inventory (DRAFT)
+
+| Requirement ID | Description | Source / Config | Automated Test / Gate | CI Verification | Status |
+|---|---|---|---|---|---|
+| UI-INVENTORY-9A | Read-only inventory of templates, navigation per role, accessibility (including WCAG contrast numbers) and consistency issues, with a prioritised list of proposed changes tagged 9B, 9C and later; no source change | [ui-inventory.md](assurance/ui-inventory.md) | None (documentation only); template rules are enforced by TemplateScannerTest (SEC-TPL-01..03) | CI `build-test-coverage` (unchanged suite) | Draft; browser checks VERIFY MANUALLY |
+
+## Phase 9B: error-page links, honest dashboard status (DRAFT)
+
+| Requirement ID | Description | Source / Config | Automated Test / Gate | CI Verification | Status |
+|---|---|---|---|---|---|
+| UI-9B-ERRLINK | Error and 429 pages link to the login page for a signed-out visitor and to the Dashboard for a signed-in user (anonymous counts as signed out) | [SignedInState.java](../src/main/java/com/casevault/web/SignedInState.java), [error.html](../src/main/resources/templates/error.html), [rate-limited.html](../src/main/resources/templates/rate-limited.html) | UI-ERR-01..05, UI-RATE-01..02, UI-NAV-02 | CI `build-test-coverage` | Verified locally |
+| UI-9B-DASH (F-009) | Auditor dashboard shows the real health result (HEALTHY, DEGRADED, DOWN, UNKNOWN), never a constant | [AuthController.java](../src/main/java/com/casevault/controller/AuthController.java), [dashboard.html](../src/main/resources/templates/dashboard.html) | UI-DASH-01..05 | CI `build-test-coverage` | Verified locally; browser rendering VERIFY MANUALLY |
+| UI-9B-CSS | `.text-muted` defined; one label "Cases (Restricted)" for the auditor | [app.css](../src/main/resources/static/css/app.css), [layout.html](../src/main/resources/templates/layout.html) | UI-CSS-01, UI-NAV-01 | CI `build-test-coverage` | Verified locally |
+
+## Phase 9B follow-up: session id never in a URL (DRAFT)
+
+| Requirement ID | Description | Source / Config | Automated Test / Gate | CI Verification | Status |
+|---|---|---|---|---|---|
+| SEC-SESSURL (F-010) | The session id travels in the cookie only; no `;jsessionid` in any body, link, form action or redirect target; cookie flags unchanged | [application.properties](../src/main/resources/application.properties) (`server.servlet.session.tracking-modes=cookie`) | SEC-SESSURL-01..04 (`SessionIdInUrlHttpTest`, real HTTP); exact-link assertions in UI-ERR-01..05 | CI `build-test-coverage` | Verified locally; browser check VERIFY MANUALLY |

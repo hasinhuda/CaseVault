@@ -27,3 +27,9 @@ This document transparently tracks all AI tooling and assistant usage during the
 
 - 2026-11-12: Assisted with Phase 8C cookie flag tests, concurrent session cap (casevault.session.max-per-user, principal equals/hashCode fix), log hygiene tests, stricter template scanner, PathPatternRequestMatcher, decision F-003 documentation (SEC-COOKIE-01..05, SEC-SESSION-01..06, SEC-LOG-01..03, SEC-TPL-01..03). found and fixed F-007, recorded decision F-003 as accepted; verified via mvnw verify (319 tests pass, 0 failures, 0 skipped, SpotBugs 0 bugs). [DRAFT]
 - 2026-11-12: Assisted with finding F-008 (test-order-dependent FK failures seen only in CI on Linux): reproduced with reverse alphabetical order, added TestDatabaseCleaner, RestoreBootstrapDataAfterAll and LeftoverRowsGuard (src/test only); verified via mvnw verify in three run orders. [DRAFT]
+
+- 2026-11-13: Assisted with Phase 9A read-only UI inventory (docs/assurance/ui-inventory.md: templates, navigation per role, accessibility and contrast, consistency, proposed 9B-9D changes); docs only, no source change; verified via mvnw verify. [DRAFT]
+
+- 2026-11-13: Assisted with Phase 9B error-page and 429-page links by sign-in state, honest auditor dashboard status (finding F-009), .text-muted and one auditor label; observed F-010 (not fixed); new tests UI-ERR, UI-RATE, UI-DASH, UI-CSS, UI-NAV; verified via mvnw verify in two run orders. [DRAFT]
+
+- 2026-11-13: Assisted with fixing F-010 (session id in URLs on the signed-out CSRF 403 page): reproduced with real HTTP, set server.servlet.session.tracking-modes=cookie, tightened link assertions, added SEC-SESSURL-01..04; verified via mvnw verify in two run orders. [DRAFT]

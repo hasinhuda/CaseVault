@@ -90,3 +90,14 @@ Not asserted on purpose: the text of an unexpected exception (the test-only 500 
 - The cap counts sessions the registry knows. Sessions end through the container's session events or expiry; a session that is only idle still counts until it times out (15 minutes idle, 8 hours absolute).
 - The log capture covers the flows listed above at the configured levels. It does not prove that no other flow, or a DEBUG level switched on by an operator, logs a secret. The marker approach proves absence of the marker values used in the test only.
 - The scanner is pattern based: it can miss obfuscated code and can flag harmless text. It guards against accidental regressions, not against a determined developer.
+
+## Session id never in a URL (F-010, added after Phase 9B)
+
+| Test ID | What it proves (real HTTP, no cookie jar for signed-out requests) |
+|---|---|
+| SEC-SESSURL-01 | `GET /login` with no cookie: no `;jsessionid` in body or Location; plain form action and stylesheet link |
+| SEC-SESSURL-02 | Signed-out CSRF 403 page: no `;jsessionid` anywhere; exact `/login` and `/css/app.css` links |
+| SEC-SESSURL-03 | Redirect of a signed-out request to a protected page goes to the plain `/login` |
+| SEC-SESSURL-04 | Successful login redirects to the plain `/dashboard`; cookie still HttpOnly and SameSite=Strict; signed-in page works with plain links |
+
+Setting: `server.servlet.session.tracking-modes=cookie`. Limit: a real browser check is VERIFY MANUALLY.

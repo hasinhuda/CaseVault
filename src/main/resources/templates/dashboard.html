@@ -17,7 +17,7 @@
     <nav class="nav-links" aria-label="Main Navigation">
         <a th:href="@{/dashboard}" class="active">Dashboard</a>
         <a th:if="${role != 'AUDITOR_ADMIN'}" th:href="@{/cases}">Cases</a>
-        <span th:if="${role == 'AUDITOR_ADMIN'}" class="text-muted" aria-disabled="true">Cases (Restricted)</span>
+        <span th:if="${role == 'AUDITOR_ADMIN'}" class="layout-header-org" aria-disabled="true">Cases (Restricted)</span>
         <a th:if="${role == 'AUDITOR_ADMIN'}" th:href="@{/audit}">Audit log</a>
         <a th:if="${role == 'AUDITOR_ADMIN'}" th:href="@{/admin/users}">Users</a>
         <a th:if="${role == 'AUDITOR_ADMIN'}" th:href="@{/admin/health}">Health</a>
@@ -69,19 +69,18 @@
         </div>
         <div class="grid-cols-3">
             <div class="metric-card">
-                <div class="metric-label">Audit Log Integrity</div>
-                <div class="metric-value">ACTIVE</div>
-                <p class="text-muted">HMAC-SHA256 Chained</p>
+                <div class="metric-label">Audit Log Integrity (last verification)</div>
+                <div class="metric-value" th:text="${auditChainState}">Not verified yet</div>
+                <p class="text-muted">Run a check on the <a th:href="@{/audit}">audit log page</a>.</p>
             </div>
             <div class="metric-card">
-                <div class="metric-label">Access Boundary</div>
-                <div class="metric-value">ENFORCED</div>
-                <p class="text-muted">Uniform 404 Masking</p>
+                <div class="metric-label">Access Boundary (control description)</div>
+                <p>This role cannot open case or evidence content. Such requests are answered with 404.</p>
             </div>
             <div class="metric-card">
-                <div class="metric-label">System Health</div>
-                <div class="metric-value">HEALTHY</div>
-                <p class="text-muted">Telemetry Online</p>
+                <div class="metric-label">System Health (checked when this page loaded)</div>
+                <div class="metric-value" th:text="${systemHealth}">UNKNOWN</div>
+                <p class="text-muted">Details on the <a th:href="@{/admin/health}">health page</a>.</p>
             </div>
         </div>
     </div>
