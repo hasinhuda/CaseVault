@@ -77,4 +77,32 @@ class PostgresAuditChainTest {
         assertThrows(DataAccessException.class, () -> jdbc.execute("TRUNCATE TABLE audit_events"));
         assertTrue(auditLogService.verifyChain().valid());
     }
+
+    @Test
+    @DisplayName("SEC-AUDIT-UI-15: on PostgreSQL the auditor filter query (type, user, date range, fixed newest-first order, size cap) runs and returns the right rows")
+    void filteredQueryOnPostgres() {
+        UUID user = UUID.randomUUID();
+        auditLogService.append(AuditEventType.LOGIN_SUCCESS, user, null, "SUCCESS");
+        auditLogService.append(AuditEventType.LOGIN_FAILURE, null, null, "BAD_CREDENTIALS");
+        auditLogService.append(AuditEventType.LOGIN_SUCCESS, user, null, "SUCCESS");
+        java.time.Instant dayStart = java.time.LocalDate.now(java.time.ZoneOffset.UTC).atStartOfDay()
+                .toInstant(java.time.ZoneOffset.UTC);
+
+        var all = auditLogService.searchEvents(null, null, null, null, 0, 1000);
+        assertTrue(all.getContent().size() <= AuditLogService.MAX_READ_PAGE_SIZE);
+        long newest = all.getContent().get(0).getSequenceNo();
+        assertTrue(all.getContent().get(1).getSequenceNo() < newest, "newest first");
+
+        var byUser = auditLogService.searchEvents(null, user, null, null, 0, 50);
+        assertTrue(byUser.getContent().stream().allMatch(e -> user.equals(e.getUserId())));
+        assertEquals(2, byUser.getTotalElements());
+        var byType = auditLogService.searchEvents(AuditEventType.LOGIN_FAILURE, null, null, null, 0, 50);
+        assertEquals(1, byType.getTotalElements());
+        var today = auditLogService.searchEvents(AuditEventType.LOGIN_SUCCESS, user, dayStart,
+                dayStart.plus(java.time.Duration.ofDays(1)), 0, 50);
+        assertEquals(2, today.getTotalElements());
+        var past = auditLogService.searchEvents(null, null, java.time.Instant.parse("2000-01-01T00:00:00Z"),
+                java.time.Instant.parse("2000-01-02T00:00:00Z"), 0, 50);
+        assertEquals(0, past.getTotalElements());
+    }
 }

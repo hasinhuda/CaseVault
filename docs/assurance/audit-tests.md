@@ -54,3 +54,28 @@ Results from `.\mvnw.cmd -B verify`: 195 tests, 0 failures, 0 skipped, SpotBugs 
 Not wired and therefore not tested: ADMIN_ACCOUNT_DISABLED, ADMIN_SESSION_REVOKED, REPORT_TRANSITION (Phase 7). The logging recorder as a selectable alternative is exercised by `EvidenceLogSecurityTest`, which selects it with `@TestPropertySource`.
 
 Existing test changed: `PostgresFlywayMigrationTest` (SEC-DB-001) now expects 7 applied migrations (V6 and the PostgreSQL-only V7 added). No assertion was removed or relaxed.
+
+## Phase 6C auditor view tests (H2, real Spring context, MockMvc)
+
+Results from `.\mvnw.cmd -B verify`: 211 tests, 0 failures, 0 skipped, SpotBugs BugInstance size 0, JaCoCo checks met. Class: [AuditUiTest.java](../../src/test/java/com/casevault/audit/AuditUiTest.java); SEC-AUDIT-UI-15 is in [PostgresAuditChainTest.java](../../src/test/java/com/casevault/db/PostgresAuditChainTest.java) (real PostgreSQL container).
+
+| Property | Test ID | Result |
+|---|---|---|
+| Before any verification the badge is "Not verified yet"; a page view never calls verifyChain and writes no event | SEC-AUDIT-UI-01 | PASS |
+| AUDITOR_ADMIN 200; CLIENT, ANALYST, MANAGER 404 on GET /audit and POST /audit/verify; each masked attempt is one ACCESS_DENIED row | SEC-AUDIT-UI-02 | PASS |
+| Unauthenticated requests behave exactly like the existing protected page /cases (401 for a generic client, redirect to login for a browser); POST without a session and without CSRF is 403 | SEC-AUDIT-UI-03 | PASS |
+| POST /audit/verify without CSRF token is 403 and verifies nothing | SEC-AUDIT-UI-04 | PASS |
+| "Audit log" link present only for the auditor; verify form has a CSRF token; skip link; no script element | SEC-AUDIT-UI-05 | PASS |
+| Auditor still gets 404 on case and evidence endpoints; audit page contains no case title, note text, file name, stored name, client or manager username, no full HMAC; shows the case id and the 12-character head prefix | SEC-AUDIT-UI-06 | PASS |
+| Filters by event type, user id, date range (inclusive end) and combined; friendly empty state | SEC-AUDIT-UI-07 | PASS |
+| Invalid event type, UUID, date, from > to: friendly message, no rows, raw input not echoed | SEC-AUDIT-UI-08 | PASS |
+| SQL-injection-looking and script-looking values are harmless; nothing is reflected, not even escaped | SEC-AUDIT-UI-09 | PASS |
+| Size capped at 50, defaults, negative/non-numeric/huge page safe, page past the end shows the empty state, sort parameter ignored | SEC-AUDIT-UI-10 | PASS |
+| Valid chain: POST redirects to /audit, badge "Chain valid", exactly one AUDIT_CHAIN_VERIFIED with the auditor's UUID and CHAIN_VALID; chain still valid afterwards | SEC-AUDIT-UI-11 | PASS |
+| Tampered row: badge "Chain BROKEN at sequence 2: HMAC_MISMATCH"; one AUDIT_CHAIN_VERIFIED with CHAIN_INVALID | SEC-AUDIT-UI-12 | PASS |
+| Two overlapping verifications: the second gets the friendly message and starts nothing, one event only; a later verification works (lock released) | SEC-AUDIT-UI-13 | PASS |
+| Audit template has no th:utext, inline script, style or handler; CSP has no unsafe-inline; nosniff present | SEC-AUDIT-UI-14 | PASS |
+| Filter query on real PostgreSQL (type, user, date range, newest first, size cap) | SEC-AUDIT-UI-15 | PASS |
+| Only AuditQueryService (and AuditLogService itself) access AuditLogReader; controllers still cannot touch the repository or AuditLogService | SEC-AUDIT-ARCH-07 (new); SEC-AUDIT-ARCH-02 and -06 unchanged | PASS |
+
+The existing template scanners (SEC-CASE-13, SEC-EVID-UI-04) walk every template, so they cover `audit/list.html`. Not tested: contrast ratios (design choice: dark text on a light tint; VERIFY MANUALLY with a contrast checker), keyboard focus appearance (shared `app.css` focus rule), behaviour with JavaScript disabled beyond "the page contains no script element".

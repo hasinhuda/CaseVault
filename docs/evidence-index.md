@@ -132,3 +132,14 @@ All Phase 5 evidence requirements (Groups A through G) verified. Phase 6 cryptog
 | SR-13 | `AuditWiringTest` SEC-AUDIT-WIRE-11 (chain verifies after real application events); `ArchitectureTest` SEC-AUDIT-ARCH-06 |
 | SR-15 | `AuditWiringTest` SEC-AUDIT-WIRE-12 (append failure shows the safe error page with a correlation id, no stack trace or exception text) |
 | SR-02 | `AuditWiringTest` SEC-AUDIT-WIRE-07 (cross-tenant request stays HTTP 404 and is recorded once as ACCESS_DENIED) |
+
+## Phase 6C: Findings Log and Auditor Audit View (DRAFT)
+
+| Requirement ID | Description | Source / Config | Automated Test / Gate | CI Verification | Status |
+|---|---|---|---|---|---|
+| FINDINGS-001 | Findings log; F-001 (authentication provider ran twice per login) with retest reference | [findings-log.md](assurance/findings-log.md) | SEC-AUDIT-WIRE-04 ([AuditWiringTest.java](../src/test/java/com/casevault/audit/AuditWiringTest.java)) | CI `build-test-coverage` | Verified (retest passes) |
+| FR-13-UI | Auditor-only paged audit list with filters, fixed newest-first sort, size cap 50 | [AuditController.java](../src/main/java/com/casevault/controller/AuditController.java), [AuditQueryService.java](../src/main/java/com/casevault/service/AuditQueryService.java), [audit/list.html](../src/main/resources/templates/audit/list.html) | SEC-AUDIT-UI-02, -03, -07, -08, -09, -10 ([AuditUiTest.java](../src/test/java/com/casevault/audit/AuditUiTest.java)); SEC-AUDIT-UI-15 (PostgreSQL) | CI `build-test-coverage` | Verified |
+| SR-07-UI | Auditor sees ids only and still has no case or evidence content | [audit-chain ADR, 6C](adr/0005-audit-chain.md) | SEC-AUDIT-UI-06 | CI `build-test-coverage` | Verified |
+| SR-13-UI | Chain verification on demand: badge, one run at a time, AUDIT_CHAIN_VERIFIED event, CSRF on POST | [AuditQueryService.java](../src/main/java/com/casevault/service/AuditQueryService.java) | SEC-AUDIT-UI-01, -04, -11, -12, -13 | CI `build-test-coverage` | Verified |
+| SR-08-UI | Audit template: th:text only, no inline script/style/handler, CSP unchanged | [audit/list.html](../src/main/resources/templates/audit/list.html) | SEC-AUDIT-UI-14, SEC-CASE-13, SEC-EVID-UI-04 | CI `build-test-coverage` | Verified |
+| ARCH-AUDIT-07 | Only AuditQueryService reads the audit log through AuditLogReader | [ArchitectureTest.java](../src/test/java/com/casevault/ArchitectureTest.java) | SEC-AUDIT-ARCH-07 | CI `build-test-coverage` | Verified |

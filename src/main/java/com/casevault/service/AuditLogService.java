@@ -2,6 +2,7 @@ package com.casevault.service;
 
 import com.casevault.model.AuditEvent;
 import com.casevault.repository.AuditEventRepository;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -31,7 +32,7 @@ import java.util.concurrent.locks.ReentrantLock;
  * repository. See docs/adr/0005-audit-chain.md for the canonical format and the lock design.
  */
 @Service
-public class AuditLogService implements AuditAppender {
+public class AuditLogService implements AuditAppender, AuditLogReader {
 
     /** Fixed, documented prev_hash of the first event: 64 hexadecimal zeros. */
     public static final String GENESIS_PREV_HASH = "0".repeat(64);
@@ -89,6 +90,7 @@ public class AuditLogService implements AuditAppender {
     }
 
     /** Verifies the whole chain in pages of {@value #DEFAULT_PAGE_SIZE} events. */
+    @Override
     public ChainVerificationResult verifyChain() {
         return verifyChain(DEFAULT_PAGE_SIZE);
     }
@@ -138,9 +140,33 @@ public class AuditLogService implements AuditAppender {
     }
 
     /** Newest sequence number and its HMAC, for anchoring outside the database (tail-truncation detection). */
+    @Override
     public Optional<ChainHead> currentHead() {
         return repository.findFirstByOrderBySequenceNoDesc()
                 .map(e -> new ChainHead(e.getSequenceNo(), e.getHmac()));
+    }
+
+    /** Hard upper bound of a read page for the auditor view. */
+    public static final int MAX_READ_PAGE_SIZE = 50;
+
+    private static final UUID NO_USER = new UUID(0L, 0L);
+    private static final Instant MIN_TIME = Instant.EPOCH;
+    private static final Instant MAX_TIME = Instant.parse("9999-01-01T00:00:00Z");
+
+    /**
+     * Newest-first filtered read (fixed sort, size capped at {@value #MAX_READ_PAGE_SIZE}). A null filter means
+     * "any". {@code toExclusive} is an exclusive upper bound.
+     */
+    @Override
+    public Page<AuditEvent> searchEvents(AuditEventType eventType, UUID userId, Instant fromInclusive,
+                                         Instant toExclusive, int page, int size) {
+        int safeSize = Math.max(1, Math.min(size, MAX_READ_PAGE_SIZE));
+        int safePage = Math.max(0, page);
+        return repository.findFiltered(eventType == null, eventType == null ? "" : eventType.name(),
+                userId == null, userId == null ? NO_USER : userId,
+                fromInclusive == null ? MIN_TIME : fromInclusive,
+                toExclusive == null ? MAX_TIME : toExclusive,
+                PageRequest.of(safePage, safeSize));
     }
 
     /** Head of the chain; an external copy of this value is what detects deletion of the newest rows. */

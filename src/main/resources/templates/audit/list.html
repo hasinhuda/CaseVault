@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head th:replace="~{layout :: htmlhead('Audit Log')}">
+    <title>Audit Log - CaseVault</title>
+</head>
+<body>
+<a href="#main-content" class="skip-link">Skip to main content</a>
+
+<div th:replace="~{layout :: appheader}"></div>
+
+<div class="app-shell">
+    <aside th:replace="~{layout :: appsidebar('audit')}"></aside>
+
+    <main id="main-content" class="content-wrapper">
+        <div class="page-header">
+            <div>
+                <h1>Audit Log</h1>
+                <p class="page-subtitle">Security events by identifier only. No case titles, notes, file names, usernames or hashes are shown here.</p>
+            </div>
+        </div>
+
+        <!-- Chain status -->
+        <section class="card" aria-labelledby="chain-status-heading">
+            <h2 class="card-title" id="chain-status-heading">Chain status</h2>
+            <div class="chain-status" role="status" aria-live="polite">
+                <p th:if="${audit.verification() == null}">
+                    <span class="status-badge status-neutral">Not verified yet</span>
+                    <span class="text-muted">The chain is not verified on page views. Run a verification below.</span>
+                </p>
+                <p th:if="${audit.verification() != null and audit.verification().valid()}">
+                    <span class="status-badge status-ok">Chain valid</span>
+                    <span class="text-muted"
+                          th:text="${audit.verification().eventsVerified()} + ' events verified at ' + ${audit.verification().checkedAt()}">N events verified</span>
+                </p>
+                <p th:if="${audit.verification() != null and !audit.verification().valid()}">
+                    <span class="status-badge status-bad"
+                          th:text="'Chain BROKEN at sequence ' + ${audit.verification().firstBrokenSequenceNo()} + ': ' + ${audit.verification().breakKind()}">Chain BROKEN</span>
+                    <span class="text-muted"
+                          th:text="${audit.verification().eventsVerified()} + ' events verified before the break, checked at ' + ${audit.verification().checkedAt()}">details</span>
+                </p>
+                <p th:if="${verifyBusy}" class="alert alert-info" th:text="${verifyBusy}">Busy</p>
+            </div>
+            <p th:if="${audit.head() != null}">
+                Head: sequence <strong th:text="${audit.head().sequenceNo()}">0</strong>,
+                HMAC starts with <code th:text="${audit.head().hmacPrefix()}">000000000000</code>.
+            </p>
+            <p th:if="${audit.head() == null}">The audit log is empty.</p>
+            <p class="text-muted">Comparing the head with a copy stored elsewhere is how deletion of the newest events (tail truncation) is detected. Verification alone cannot detect it.</p>
+            <form th:action="@{/audit/verify}" method="post">
+                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                <button type="submit" class="btn btn-primary btn-sm">Verify chain now</button>
+            </form>
+        </section>
+
+        <!-- Filters -->
+        <div class="filter-bar">
+            <form th:action="@{/audit}" method="get">
+                <div class="filter-item">
+                    <label for="filter-event-type">Event type</label>
+                    <select id="filter-event-type" name="eventType" class="form-control">
+                        <option value="">All event types</option>
+                        <option th:each="t : ${audit.eventTypes()}" th:value="${t}" th:text="${t}"
+                                th:selected="${t == audit.eventType()}">TYPE</option>
+                    </select>
+                </div>
+                <div class="filter-item">
+                    <label for="filter-user-id">User id (UUID)</label>
+                    <input type="text" id="filter-user-id" name="userId" th:value="${audit.userId()}"
+                           maxlength="36" autocomplete="off" class="form-control"/>
+                </div>
+                <div class="filter-item">
+                    <label for="filter-from">From (yyyy-MM-dd)</label>
+                    <input type="text" id="filter-from" name="from" th:value="${audit.from()}"
+                           maxlength="10" placeholder="2026-01-31" autocomplete="off" class="form-control"/>
+                </div>
+                <div class="filter-item">
+                    <label for="filter-to">To (yyyy-MM-dd)</label>
+                    <input type="text" id="filter-to" name="to" th:value="${audit.to()}"
+                           maxlength="10" placeholder="2026-12-31" autocomplete="off" class="form-control"/>
+                </div>
+                <div>
+                    <button type="submit" class="btn btn-primary btn-sm">Filter</button>
+                    <a th:href="@{/audit}" class="btn btn-secondary btn-sm ml-8">Clear</a>
+                </div>
+            </form>
+        </div>
+
+        <div th:if="${!audit.errors().isEmpty()}" class="alert alert-danger" role="alert">
+            <p th:each="e : ${audit.errors()}" th:text="${e}">Problem</p>
+        </div>
+
+        <!-- Events -->
+        <div class="card" th:if="${audit.errors().isEmpty()}">
+            <div th:if="${!audit.rows().isEmpty()}" class="table-responsive">
+                <table class="data-table">
+                    <caption class="sr-only">Audit events, newest first</caption>
+                    <thead>
+                    <tr>
+                        <th scope="col">Sequence</th>
+                        <th scope="col">Time (UTC)</th>
+                        <th scope="col">Event type</th>
+                        <th scope="col">User id</th>
+                        <th scope="col">Case id</th>
+                        <th scope="col">Reason code</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr th:each="row : ${audit.rows()}">
+                        <td th:text="${row.sequenceNo()}">1</td>
+                        <td th:text="${row.occurredAt()}">time</td>
+                        <td th:text="${row.eventType()}">TYPE</td>
+                        <td class="mono" th:text="${row.userId()}">uuid</td>
+                        <td class="mono" th:text="${row.caseId()}">uuid</td>
+                        <td th:text="${row.reasonCode()}">REASON</td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div th:if="${!audit.rows().isEmpty()}" class="pagination">
+                <span th:text="'Page ' + (${audit.page()} + 1) + ' of ' + ${audit.totalPages()} + ' (' + ${audit.totalElements()} + ' events)'">Page 1 of 1</span>
+                <div class="pagination-controls">
+                    <a th:if="${audit.hasPrevious()}"
+                       th:href="@{/audit(page=${audit.page() - 1}, size=${audit.size()}, eventType=${audit.eventType()}, userId=${audit.userId()}, from=${audit.from()}, to=${audit.to()})}"
+                       class="btn btn-secondary btn-sm">Previous</a>
+                    <a th:if="${audit.hasNext()}"
+                       th:href="@{/audit(page=${audit.page() + 1}, size=${audit.size()}, eventType=${audit.eventType()}, userId=${audit.userId()}, from=${audit.from()}, to=${audit.to()})}"
+                       class="btn btn-secondary btn-sm">Next</a>
+                </div>
+            </div>
+            <div th:if="${audit.rows().isEmpty()}" class="empty-state">
+                <h3>No audit events found</h3>
+                <p>No events match the filters, or this page is beyond the last page.</p>
+                <a th:href="@{/audit}" class="btn btn-secondary btn-sm">Show newest events</a>
+            </div>
+        </div>
+    </main>
+</div>
+
+<div th:replace="~{layout :: appfooter}"></div>
+</body>
+</html>

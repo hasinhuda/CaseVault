@@ -25,6 +25,8 @@ public enum AuditReasonCode {
     REJECTED,
     DISABLED_BY_ADMIN,
     SESSIONS_REVOKED,
+    CHAIN_VALID,
+    CHAIN_INVALID,
     UNSPECIFIED;
 
     /** Maps a raw string to a whitelisted code by exact name; anything else (including null) is UNSPECIFIED. */

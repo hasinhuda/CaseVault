@@ -124,3 +124,22 @@ Not wired (Phase 7): `ADMIN_ACCOUNT_DISABLED`, `ADMIN_SESSION_REVOKED`, `REPORT_
 ### Additional residual risks
 - Login-failure flooding grows `audit_events` without bound until Phase 8 rate limiting; there is no retention or archival for audit rows.
 - The audit user id is the account UUID; typed usernames, passwords, tokens, session ids, IP addresses and user agents are never stored or logged by the audit path (SEC-AUDIT-WIRE-06).
+
+## Phase 6C Auditor view (as built)
+Pages: `GET /audit` (paged list) and `POST /audit/verify` (verify, then redirect to `/audit`). Both are AUDITOR_ADMIN only. The controller ([AuditController.java](../../src/main/java/com/casevault/controller/AuditController.java)) calls `AuditQueryService` only; that service reads through the `AuditLogReader` interface implemented by `AuditLogService` (an interface rather than the class, so SpotBugs raises no EI_EXPOSE_REP2 and no exclusion is needed). The role check is repeated server side in the service: every other role gets HTTP 404 (never 403) and the masked attempt is recorded as `ACCESS_DENIED` / `NOT_VISIBLE`. A POST without a CSRF token is HTTP 403 (Spring Security).
+
+### What the auditor sees, and cannot see
+- Columns: sequence, time (UTC), event type, user id (UUID), case id (UUID), reason code. Nothing else is read into the view: no case titles, notes, evidence names, usernames, stored names, `prev_hash` or full HMAC. The auditor still gets 404 on case and evidence endpoints (SEC-AUDIT-UI-06).
+- Sort is fixed (sequence descending); a `sort` parameter is never read. Page size default 25, hard cap 50 (also enforced inside `AuditLogService.searchEvents`); a negative, non-numeric or huge page index is clamped, and a page past the end shows the friendly empty state.
+- Filters: event type (allow-list = `AuditEventType`), user id (strict 8-4-4-4-12 hex shape, then UUID parse), date range (ISO `yyyy-MM-dd`, UTC days, `to` inclusive, `from` must not be after `to`). Any invalid value gives a friendly message and no rows; the raw input is not echoed at all. The query is one JPQL statement with bind parameters (no string building, no LIKE).
+
+### Chain status badge
+- The last verification result is kept in memory in `AuditQueryService` (checked-at, valid, first broken sequence, kind of break, events verified). Badge text: "Not verified yet" (neutral), "Chain valid", or "Chain BROKEN at sequence N: KIND". Each badge has text and a coloured border, so colour is never the only signal. The region is `role="status"` with `aria-live="polite"`.
+- Why the chain is not verified on every page view: verification reads and recomputes every event, so its cost grows with the log, a page view should not be a way to load the database, and a read-only view should not run a heavy operation as a side effect. Verification is an explicit POST. Only one verification runs at a time; a concurrent request gets a friendly message and starts nothing.
+- The page also shows the head sequence number and the first 12 hex characters of the head HMAC. Comparing them with a copy stored elsewhere is how tail truncation is detected (residual risk 3). Nothing stores or exports such a copy yet.
+- Each completed verification appends one `AUDIT_CHAIN_VERIFIED` event (reason `CHAIN_VALID` or `CHAIN_INVALID`) with the auditor's UUID, after the verification finished, as an outcome event of the 6B recorder (fail-closed). Viewing the list is not audited.
+
+### Residual risks added by 6C
+- The verification status is in memory only: lost on restart and not shared between nodes.
+- Audit pages do not yet send `Cache-Control: no-store` (Phase 8).
+- Viewing the list is not audited. The page shows ids only, so mapping an id to a person needs another function that does not exist yet.

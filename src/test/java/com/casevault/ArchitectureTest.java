@@ -91,6 +91,15 @@ class ArchitectureTest {
             .because("only the recorder interface may be used outside the audit service layer");
 
     @ArchTest
+    static final ArchRule auditLogServiceOnlyUsedByAuditQueryServiceAndAppendPath = classes()
+            .that().haveSimpleName("AuditLogReader")
+            .should().onlyBeAccessed().byClassesThat(
+                    com.tngtech.archunit.core.domain.JavaClass.Predicates.simpleName("AuditQueryService")
+                            .or(com.tngtech.archunit.core.domain.JavaClass.Predicates.simpleName("AuditLogService")))
+            .as("SEC-AUDIT-ARCH-07: Only AuditQueryService reads the audit log (AuditLogReader); the recorder path uses the AuditAppender interface")
+            .because("controllers reach the audit log only through AuditQueryService (Phase 6C); the append path is the AuditAppender interface");
+
+    @ArchTest
     static final ArchRule controllersMustNotAccessEvidenceRepositoryOrStorage = noClasses()
             .that().resideInAPackage("..controller..")
             .should().dependOnClassesThat().haveNameMatching(".*(EvidenceRepository|EvidenceStorageService|EvidenceStore).*")

@@ -55,3 +55,13 @@ This backlog tracks identified technical debt, deferred security enhancements, a
 - The AUDITOR_ADMIN audit view and chain verification page is Phase 6C.
 - A committed action can be unaudited if the append fails after commit (no retry queue or outbox).
 - HTTP Basic requests on `/api` record one LOGIN_SUCCESS per request; consider disabling Basic or sampling before production.
+
+## Phase 6C auditor view backlog (DRAFT)
+
+- Viewing the audit list is not audited (only chain verification is); decide whether auditor reads must be recorded.
+- The page shows ids only (user id, case id), no usernames, by design; resolving an id to a person needs a separate, audited admin function (Phase 7).
+- The last chain verification result is in memory: lost on restart and not shared between nodes. Persist it or recompute on demand.
+- There is no export of the head anchor (sequence and HMAC); the page only shows the first 12 hex characters, so tail truncation is still detected only by manual comparison.
+- Audit pages need `Cache-Control: no-store` (Phase 8).
+- Contrast ratio and keyboard behaviour of the new page were not measured with a tool: VERIFY MANUALLY.
+- The auditor dashboard card still contains static text ("Audit Log Integrity: ACTIVE") that is not computed from a verification; replace it with the real status.
