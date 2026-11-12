@@ -71,6 +71,14 @@ class HeaderAuditTest {
         registry.add("casevault.storage.keyset-path", () -> sharedTempDir.resolve("keyset.json").toString());
     }
 
+    @org.springframework.beans.factory.annotation.Autowired
+    private org.springframework.jdbc.core.JdbcTemplate cleanupJdbc;
+
+    @org.junit.jupiter.api.AfterEach
+    void leaveNoReportRowsBehind() {
+        com.casevault.support.TestDatabaseCleaner.deleteReports(cleanupJdbc); // F-008
+    }
+
     @Autowired
     private MockMvc mockMvc;
     @Autowired

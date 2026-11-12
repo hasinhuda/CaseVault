@@ -124,8 +124,13 @@ public class EvidenceWebSecurityTest {
     };
     private static final byte[] VALID_TXT_BYTES = "2026-11-10 14:00:00 Incident Report Case #49281".getBytes(StandardCharsets.UTF_8);
 
+    @org.springframework.beans.factory.annotation.Autowired
+    private org.springframework.jdbc.core.JdbcTemplate cleanupJdbc;
+
     @BeforeEach
     void setUp() {
+        // F-008: FK-safe cleanup (reports, actions, notes, evidence, cases); other classes may have committed rows
+        com.casevault.support.TestDatabaseCleaner.deleteCasesAndDependents(cleanupJdbc);
         evidenceRepository.deleteAll();
         caseRepository.deleteAll();
         clearInvocations(auditEventRecorder);

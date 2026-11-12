@@ -48,6 +48,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @SpringBootTest
 @org.springframework.test.context.TestPropertySource(properties = "casevault.audit.recorder=logging")
+@org.junit.jupiter.api.extension.ExtendWith(com.casevault.support.RestoreBootstrapDataAfterAll.class)
 public class EvidenceLogSecurityTest {
 
     private static final Pattern AUDIT_LINE_PATTERN = Pattern.compile(
@@ -87,6 +88,9 @@ public class EvidenceLogSecurityTest {
     private Case aCase;
     private CaseVaultUserPrincipal principal;
 
+    @org.springframework.beans.factory.annotation.Autowired
+    private org.springframework.jdbc.core.JdbcTemplate cleanupJdbc;
+
     @BeforeEach
     void setUp() {
         auditLogger = (Logger) LoggerFactory.getLogger(LoggingAuditEventRecorder.class);
@@ -94,6 +98,8 @@ public class EvidenceLogSecurityTest {
         listAppender.start();
         auditLogger.addAppender(listAppender);
 
+        // F-008: FK-safe cleanup (reports, actions, notes, evidence, cases); other classes may have committed rows
+        com.casevault.support.TestDatabaseCleaner.deleteCasesAndDependents(cleanupJdbc);
         evidenceRepository.deleteAll();
         caseRepository.deleteAll();
         userRepository.deleteAll();

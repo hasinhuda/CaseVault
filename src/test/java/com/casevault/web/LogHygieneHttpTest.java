@@ -133,6 +133,9 @@ class LogHygieneHttpTest {
     private CaseRepository caseRepository;
     @Autowired
     private Environment environment;
+    @org.springframework.beans.factory.annotation.Autowired
+    private org.springframework.jdbc.core.JdbcTemplate cleanupJdbc;
+
     @MockitoSpyBean
     private AuditLogService auditLogService;
 
@@ -247,6 +250,7 @@ class LogHygieneHttpTest {
 
     @AfterEach
     void tearDown() {
+        com.casevault.support.TestDatabaseCleaner.deleteReports(cleanupJdbc); // F-008: leave no committed report rows behind
         reset(auditLogService);
         rootLogger.detachAppender(logs);
         logs.stop();

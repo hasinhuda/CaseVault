@@ -160,6 +160,7 @@ class RateLimitHttpTest {
 
     @AfterEach
     void tearDown() {
+        com.casevault.support.TestDatabaseCleaner.deleteReports(jdbc); // F-008: leave no committed report rows behind
         rootLogger.detachAppender(logs);
         logs.stop();
     }
