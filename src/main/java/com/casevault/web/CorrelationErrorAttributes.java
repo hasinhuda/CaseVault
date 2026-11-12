@@ -20,6 +20,7 @@ public class CorrelationErrorAttributes extends DefaultErrorAttributes {
         Map<String, Object> attributes = super.getErrorAttributes(webRequest, options);
         Object requestId = webRequest.getAttribute(CorrelationIdFilter.REQUEST_ATTRIBUTE, WebRequest.SCOPE_REQUEST);
         attributes.put("correlationId", CorrelationIdFilter.currentId(requestId));
+        attributes.put("signedIn", SignedInState.isSignedIn());
         Object status = attributes.get("status");
         attributes.put("message", safeMessage(status instanceof Integer code ? code : 500));
         attributes.remove("path");

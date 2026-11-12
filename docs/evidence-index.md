@@ -230,3 +230,11 @@ All Phase 5 evidence requirements (Groups A through G) verified. Phase 6 cryptog
 | Requirement ID | Description | Source / Config | Automated Test / Gate | CI Verification | Status |
 |---|---|---|---|---|---|
 | UI-INVENTORY-9A | Read-only inventory of templates, navigation per role, accessibility (including WCAG contrast numbers) and consistency issues, with a prioritised list of proposed changes tagged 9B, 9C and later; no source change | [ui-inventory.md](assurance/ui-inventory.md) | None (documentation only); template rules are enforced by TemplateScannerTest (SEC-TPL-01..03) | CI `build-test-coverage` (unchanged suite) | Draft; browser checks VERIFY MANUALLY |
+
+## Phase 9B: error-page links, honest dashboard status (DRAFT)
+
+| Requirement ID | Description | Source / Config | Automated Test / Gate | CI Verification | Status |
+|---|---|---|---|---|---|
+| UI-9B-ERRLINK | Error and 429 pages link to the login page for a signed-out visitor and to the Dashboard for a signed-in user (anonymous counts as signed out) | [SignedInState.java](../src/main/java/com/casevault/web/SignedInState.java), [error.html](../src/main/resources/templates/error.html), [rate-limited.html](../src/main/resources/templates/rate-limited.html) | UI-ERR-01..05, UI-RATE-01..02, UI-NAV-02 | CI `build-test-coverage` | Verified locally |
+| UI-9B-DASH (F-009) | Auditor dashboard shows the real health result (HEALTHY, DEGRADED, DOWN, UNKNOWN), never a constant | [AuthController.java](../src/main/java/com/casevault/controller/AuthController.java), [dashboard.html](../src/main/resources/templates/dashboard.html) | UI-DASH-01..05 | CI `build-test-coverage` | Verified locally; browser rendering VERIFY MANUALLY |
+| UI-9B-CSS | `.text-muted` defined; one label "Cases (Restricted)" for the auditor | [app.css](../src/main/resources/static/css/app.css), [layout.html](../src/main/resources/templates/layout.html) | UI-CSS-01, UI-NAV-01 | CI `build-test-coverage` | Verified locally |

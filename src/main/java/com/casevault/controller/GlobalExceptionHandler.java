@@ -39,6 +39,7 @@ import org.springframework.orm.ObjectOptimisticLockingFailureException;
 
 import com.casevault.web.CorrelationErrorAttributes;
 import com.casevault.web.CorrelationIdFilter;
+import com.casevault.web.SignedInState;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -74,7 +75,7 @@ public class GlobalExceptionHandler {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).contentType(MediaType.APPLICATION_JSON).body(body);
         }
 
-        ModelAndView mav = new ModelAndView("error");
+        ModelAndView mav = errorView();
         mav.setStatus(HttpStatus.NOT_FOUND);
         mav.addObject("status", 404);
         mav.addObject("error", "Not Found");
@@ -96,7 +97,7 @@ public class GlobalExceptionHandler {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).contentType(MediaType.APPLICATION_JSON).body(body);
         }
 
-        ModelAndView mav = new ModelAndView("error");
+        ModelAndView mav = errorView();
         mav.setStatus(HttpStatus.BAD_REQUEST);
         mav.addObject("status", 400);
         mav.addObject("error", "Bad Request");
@@ -120,7 +121,7 @@ public class GlobalExceptionHandler {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).contentType(MediaType.APPLICATION_JSON).body(body);
         }
 
-        ModelAndView mav = new ModelAndView("error");
+        ModelAndView mav = errorView();
         mav.setStatus(HttpStatus.BAD_REQUEST);
         mav.addObject("status", 400);
         mav.addObject("error", "Payload Too Large");
@@ -154,7 +155,7 @@ public class GlobalExceptionHandler {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).contentType(MediaType.APPLICATION_JSON).body(body);
         }
 
-        ModelAndView mav = new ModelAndView("error");
+        ModelAndView mav = errorView();
         mav.setStatus(HttpStatus.BAD_REQUEST);
         mav.addObject("status", 400);
         mav.addObject("error", "Validation Failure");
@@ -193,7 +194,7 @@ public class GlobalExceptionHandler {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).contentType(MediaType.APPLICATION_JSON).body(body);
         }
 
-        ModelAndView mav = new ModelAndView("error");
+        ModelAndView mav = errorView();
         mav.setStatus(HttpStatus.FORBIDDEN);
         mav.addObject("status", 403);
         mav.addObject("error", "Forbidden");
@@ -249,7 +250,7 @@ public class GlobalExceptionHandler {
             body.put("correlationId", correlationId);
             return ResponseEntity.status(status).contentType(MediaType.APPLICATION_JSON).body(body);
         }
-        ModelAndView mav = new ModelAndView("error");
+        ModelAndView mav = errorView();
         mav.setStatus(status);
         mav.addObject("status", status.value());
         mav.addObject("error", status.getReasonPhrase());
@@ -264,6 +265,13 @@ public class GlobalExceptionHandler {
      */
     private static String safeFieldMessage(FieldError fieldError) {
         return fieldError.isBindingFailure() ? "has an invalid value" : fieldError.getDefaultMessage();
+    }
+
+    /** The error page view; "signedIn" only chooses the link on the page (Dashboard or Back to login). */
+    private static ModelAndView errorView() {
+        ModelAndView mav = new ModelAndView("error");
+        mav.addObject("signedIn", SignedInState.isSignedIn());
+        return mav;
     }
 
     /** The id assigned by {@link CorrelationIdFilter} (page, header and log line share it). */
@@ -288,7 +296,7 @@ public class GlobalExceptionHandler {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).contentType(MediaType.APPLICATION_JSON).body(body);
         }
 
-        ModelAndView mav = new ModelAndView("error");
+        ModelAndView mav = errorView();
         mav.setStatus(HttpStatus.INTERNAL_SERVER_ERROR);
         mav.addObject("status", 500);
         mav.addObject("error", "Internal Server Error");

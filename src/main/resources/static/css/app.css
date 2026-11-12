@@ -738,6 +738,10 @@ footer.app-footer {
     color: var(--teal-primary);
 }
 
+.text-muted {
+    color: var(--text-muted);
+}
+
 .mt-16 {
     margin-top: 16px;
 }

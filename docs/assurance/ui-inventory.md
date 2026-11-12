@@ -214,3 +214,15 @@ Severity order inside each group: security-relevant, accessibility, consistency.
 - The exact page a signed-out visitor sees for a failed CSRF POST (code path read, not exercised).
 - Screen reader output (only the HTML was read).
 - Contrast values come from the CSS hex values; hover/active state combinations not listed were not computed, and colours set by the browser (placeholder, disabled controls) are the browser defaults.
+
+## 10. Phase 9B result (DRAFT)
+
+| Item | Inventory finding | Change | Test |
+|---|---|---|---|
+| B1 error page | Section 4: error page has no "Back to login" for a signed-out visitor | `error.html`: signed-out sees "Back to login" (`/login`), signed-in sees "Return to Dashboard" (`/dashboard`); the flag `signedIn` comes from `SignedInState` (Security context, anonymous counts as signed out) via `GlobalExceptionHandler.errorView()` and `CorrelationErrorAttributes` | UI-ERR-01..05 (`ErrorPageLinksHttpTest`), UI-NAV-02 (`UiConsistencyTest`) |
+| B1 429 page | Section 4: link to `/login` for everyone | `rate-limited.html`: same rule; `ThymeleafBlockedPageRenderer` passes `signedIn` | UI-RATE-01, UI-RATE-02 (`RateLimitPageLinksTest`) |
+| B2 dashboard | Section 6 "Hard-coded status text", proposed change 1 | Auditor dashboard shows the health service result (HEALTHY, DEGRADED, DOWN, UNKNOWN) and the real audit chain state; the access-boundary card is a description only (finding F-009) | UI-DASH-01..05 (`DashboardStatusTest`) |
+| B3 `.text-muted` | Section 6 "Undefined CSS class", proposed change 8 (first part) | `.text-muted` added to `app.css` with `var(--text-muted)`; the dashboard header label that used it on the dark background now uses the existing `layout-header-org` class (`#94A3B8` on navy, 6.74:1) so it does not turn dark grey | UI-CSS-01 (`UiConsistencyTest`) |
+| B3 label | Section 4: "Quarantined" vs "Restricted" | One wording, "Cases (Restricted)", in `layout.html` and `dashboard.html` (reason: it states the rule plainly; "Quarantined" suggests infected or isolated data) | UI-NAV-01 (`UiConsistencyTest`), UI-DASH-05 |
+
+Not done in 9B (still open in section 8): dead CSS removal, `.badge-role` scope, contrast fixes, ARIA, focus, shared dashboard shell. New observation: F-010 (`;jsessionid` in links of the signed-out CSRF error page), not fixed, owner decision needed.
