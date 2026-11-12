@@ -51,3 +51,63 @@ Results from `.\mvnw.cmd -B verify`: 279 tests, 0 failures, 0 skipped, SpotBugs 
 - Limits are defaults, not tuned; there is no CAPTCHA and no progressive delay.
 - User-based limits apply to authenticated requests; unauthenticated floods of other URLs are not limited.
 - Not tested: behaviour behind a real reverse proxy; the limits of two nodes together; the contrast and keyboard behaviour of the 429 page (VERIFY MANUALLY).
+
+
+## 2. Browser security headers, caching and safe errors (Phase 8B)
+
+Results from `.\mvnw.cmd -B verify`: 297 tests, 0 failures, 0 skipped, SpotBugs BugInstance size 0, JaCoCo checks met. Classes: [HeaderAuditTest.java](../../src/test/java/com/casevault/web/HeaderAuditTest.java), [HstsProfileTest.java](../../src/test/java/com/casevault/web/HstsProfileTest.java), [CorrelationIdTest.java](../../src/test/java/com/casevault/web/CorrelationIdTest.java), [ErrorHandlingHttpTest.java](../../src/test/java/com/casevault/web/ErrorHandlingHttpTest.java) (real HTTP to the embedded server), [StatusConsistencyTest.java](../../src/test/java/com/casevault/web/StatusConsistencyTest.java).
+
+### Header audit: before and after
+The first run of `HeaderAuditTest` recorded the headers of 16 page types before any change. Missing then: `Cross-Origin-Opener-Policy`, `Cross-Origin-Resource-Policy`, the CSP directives `base-uri`, `form-action`, `script-src`, `style-src`, and `X-Correlation-ID` on every response. Also seen: an unknown URL answered HTTP 500 (finding F-002). Already correct: `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy`, and `Cache-Control: no-store` on every dynamic page (Spring Security default).
+
+Headers now, identical on every page type (login, dashboard, case list, case detail, evidence tab, report list, report detail, redirect with state, audit list, admin users, admin health, 404 page, 429 page, evidence download, actuator health, static CSS):
+
+| Header | Value (asserted exactly in SEC-HDR-01) |
+|---|---|
+| Content-Security-Policy (header 1, unchanged) | `default-src 'self'; frame-ancestors 'none'; object-src 'none'` |
+| Content-Security-Policy (header 2, new) | `base-uri 'self'; form-action 'self'; script-src 'self'; style-src 'self'` |
+| X-Content-Type-Options | `nosniff` |
+| X-Frame-Options | `DENY` |
+| Referrer-Policy | `strict-origin-when-cross-origin` |
+| Permissions-Policy | `camera=(), microphone=(), geolocation=()` |
+| Cross-Origin-Opener-Policy | `same-origin` |
+| Cross-Origin-Resource-Policy | `same-origin` |
+| Strict-Transport-Security | absent on the local profile (also for a request marked secure); `max-age=31536000 ; includeSubDomains` with the prod-like profile on an https request |
+| Cache-Control | `no-cache, no-store, max-age=0, must-revalidate` (Spring Security default) on every page, redirect, error page and the static CSS; `no-store` on the 429 page and the evidence download |
+| X-Correlation-ID | a UUID on every response |
+
+Decisions: the CSP is sent as TWO headers. Browsers enforce every CSP header they receive (the result is the intersection, nothing weaker), and the original value stays byte for byte identical, so the existing assertion TEST-BASE-002 and the 8A test still hold unchanged. `script-src` and `style-src` allow only `'self'`; no `'unsafe-inline'` and no `'unsafe-eval'`, so no nonce is needed (the templates contain no inline script or style; the scanners enforce it). `Referrer-Policy` stays `strict-origin-when-cross-origin` as written in SR-09; `no-referrer` would also work in this single-origin application but would deviate from that requirement text. `Permissions-Policy` was not extended because the existing assertion fixes its exact value; it already denies camera, microphone and geolocation. The static CSS is not cached today (Spring Security's no-store applies); that is simple and safe, only slower.
+
+### Safe errors and the correlation id
+- `CorrelationIdFilter` runs before the security chain. The client header `X-Correlation-ID` is used only when it is a strictly formed UUID (rebuilt from the parsed value, echoed in canonical lower case); anything else is replaced. The id is in the request, in the logging context (log pattern `[cid=...]`) and in the response header before the application runs.
+- Error pages (`error.html`, base layout head, `th:text` only) are rendered for 400, 403, 404, 405, 409, 500 and every other status by the same template, either by `GlobalExceptionHandler` or by the Boot `/error` mechanism (`CorrelationErrorAttributes` adds the id and a fixed text per status). `server.error.include-message/stacktrace/exception/binding-errors` are off, the Whitelabel page is off.
+- Two responses use their own fresh id instead of the request id, set consistently in header, page and log line: the 429 page (8A) and the 500 page after a failed audit append (6B), because their ERROR/WARN log line is written before the response exists.
+
+### Attack to test to result
+| Attack or property | Test ID | Result |
+|---|---|---|
+| Missing or weak security headers on any page type, including error, 429, download, static and actuator responses | SEC-HDR-01 | PASS |
+| HSTS: absent on the local profile (http and secure-marked requests), present with the prod-like profile on https, absent on plain http | SEC-HDR-03, SEC-HDR-02 | PASS |
+| Authenticated pages cached by browsers or proxies: audit, admin, dashboard, login redirect and logout redirect are no-store (closes the backlog item "audit pages need Cache-Control no-store") | SEC-HDR-04, SEC-HDR-01 | PASS |
+| Unknown URL, wrong method, missing static file: safe 404/405 pages with the same id in header and page | SEC-ERR-01 | PASS |
+| `page=abc`, type mismatch, malformed UUID: safe 400/404 pages without class names or echoed input | SEC-ERR-02 | PASS |
+| Malformed multipart body: safe 400 page | SEC-ERR-03 | PASS |
+| CSRF failure stays 403 and uses the safe page with a correlation id | SEC-ERR-04 | PASS |
+| Unexpected runtime exception: safe 500 page, no exception text, id in header = page = ERROR log context | SEC-ERR-05 | PASS |
+| Database exception: safe 500 page without SQL or constraint names | SEC-ERR-06 | PASS |
+| Exception while rendering a template: safe 500 page via /error | SEC-ERR-07 | PASS |
+| API clients get JSON errors with the correlation id and no stack trace | SEC-ERR-08 | PASS |
+| Unauthenticated request for an unknown URL still redirects to the login page | SEC-ERR-09 | PASS |
+| Log forging and header injection through X-Correlation-ID (CR/LF, long junk, script text, wrong shapes): replaced by a fresh UUID; a valid UUID is echoed | SEC-ERR-10 | PASS |
+| Every response carries a correlation id, one id per request, page = header = log context | SEC-ERR-11 | PASS |
+| 404 for objects the caller may not see and 403 for forbidden actions on visible cases, each with exactly one ACCESS_DENIED audit event (as pinned by Phase 3/4 tests); CSRF 403 for every route and role; unauthenticated behaviour unchanged | SEC-HDR-404-01, -02, -03 | PASS |
+
+Every error test in SEC-ERR-01..09 asserts the absence of: "Whitelabel", "Exception", "at com.", "org.springframework", "java.lang", "SQL", SQL keywords, file paths, the secret text thrown by the test-only controller, and the echoed input.
+
+### Honest limits
+- Headers are verified through MockMvc and a local embedded server, not in a real browser. CSP behaviour (blocked inline content, console reports) is not verified in a browser console: VERIFY MANUALLY.
+- HSTS is only honoured by browsers over https; the header was verified on a request marked secure, not over a real TLS connection (TLS comes with the Phase 12 reverse proxy).
+- The error page for an oversized upload is covered by the existing MockMvc test (GlobalExceptionHandlerUploadTest); a real oversize upload over HTTP was not tested because the container may close the connection before answering.
+- Two CSP headers are unusual; a later change can merge them when TEST-BASE-002 is updated.
+- Finding F-003 (403 for forbidden actions on visible cases versus the wording of SR-02) is a decision, not a fix; see [findings-log.md](findings-log.md).
+- The test-only fault controller and the failing template live in `src/test` and are not part of the application.

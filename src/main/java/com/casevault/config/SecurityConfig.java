@@ -63,7 +63,8 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http, SessionRegistry sessionRegistry,
-                                                   com.casevault.ratelimit.RateLimitFilter rateLimitFilter) throws Exception {
+                                                   com.casevault.ratelimit.RateLimitFilter rateLimitFilter,
+                                                   @org.springframework.beans.factory.annotation.Value("${casevault.security.hsts-enabled:false}") boolean hstsEnabled) throws Exception {
         LinkedHashMap<RequestMatcher, AuthenticationEntryPoint> entryPoints = new LinkedHashMap<>();
         entryPoints.put(AntPathRequestMatcher.antMatcher("/api/**"), new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED));
         entryPoints.put(new MediaTypeRequestMatcher(MediaType.APPLICATION_JSON), new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED));
@@ -112,6 +113,25 @@ public class SecurityConfig {
                 .referrerPolicy(referrer -> referrer.policy(ReferrerPolicyHeaderWriter.ReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN))
                 .permissionsPolicyHeader(permissions -> permissions.policy("camera=(), microphone=(), geolocation=()"))
                 .contentSecurityPolicy(csp -> csp.policyDirectives("default-src 'self'; frame-ancestors 'none'; object-src 'none'"))
+                // Phase 8B: a second CSP header with the remaining directives. Several CSP headers are all enforced
+                // (the browser applies the intersection), so the first, long-standing policy value stays byte for
+                // byte unchanged (TEST-BASE-002) while base-uri, form-action, script-src and style-src are added.
+                // No 'unsafe-inline' and no 'unsafe-eval' anywhere.
+                .addHeaderWriter((request, response) -> response.addHeader("Content-Security-Policy",
+                        "base-uri 'self'; form-action 'self'; script-src 'self'; style-src 'self'"))
+                .crossOriginOpenerPolicy(coop -> coop.policy(
+                        org.springframework.security.web.header.writers.CrossOriginOpenerPolicyHeaderWriter.CrossOriginOpenerPolicy.SAME_ORIGIN))
+                .crossOriginResourcePolicy(corp -> corp.policy(
+                        org.springframework.security.web.header.writers.CrossOriginResourcePolicyHeaderWriter.CrossOriginResourcePolicy.SAME_ORIGIN))
+                // HSTS only where the profile says so (prod-like). Browsers honour it over https only; Spring
+                // Security additionally writes it only on secure requests.
+                .httpStrictTransportSecurity(hsts -> {
+                    if (hstsEnabled) {
+                        hsts.includeSubDomains(true).maxAgeInSeconds(31_536_000L);
+                    } else {
+                        hsts.disable();
+                    }
+                })
             )
             .sessionManagement(session -> session
                 .sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED)

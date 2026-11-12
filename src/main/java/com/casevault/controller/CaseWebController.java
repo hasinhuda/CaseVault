@@ -147,9 +147,10 @@ public class CaseWebController {
             @AuthenticationPrincipal CaseVaultUserPrincipal principal,
             Model model) {
 
-        if (principal == null || principal.getRole() == Role.AUDITOR_ADMIN) {
+        if (principal == null) {
             throw new ResourceNotFoundException("Not found");
         }
+        // AUDITOR_ADMIN is answered with 404 (and one ACCESS_DENIED / NOT_VISIBLE audit event) by the service.
 
         CaseResponseDto caseItem = caseAccessService.getCaseById(id, principal);
         List<CaseNoteResponseDto> notes = caseAccessService.getCaseNotes(id, principal);
@@ -191,7 +192,9 @@ public class CaseWebController {
      * Form submission: Assign analyst to case (MANAGER only).
      */
     @PostMapping("/{id}/assign")
-    @PreAuthorize("hasRole('MANAGER')")
+    // Visibility first, then the role: the service answers 404 for a case the caller may not see (including
+    // AUDITOR_ADMIN, SR-07) and 403 only for a visible case when the caller is not a MANAGER.
+    @PreAuthorize("isAuthenticated()")
     public String assignAnalyst(
             @PathVariable("id") String id,
             @Valid @ModelAttribute AssignAnalystRequestDto dto,

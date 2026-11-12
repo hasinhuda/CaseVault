@@ -97,6 +97,7 @@ public class ChainedAuditEventRecorder implements AuditEventRecorder {
 
     /** Logs an ERROR line with a fresh correlation id only (never the exception, which could carry data). */
     private static String logFailure() {
+        // Fresh id; the error handler puts the same id into the response header and the page (see GlobalExceptionHandler).
         String correlationId = UUID.randomUUID().toString();
         LOGGER.error("Audit append failed correlationId={}", correlationId);
         return correlationId;

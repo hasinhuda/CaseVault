@@ -110,3 +110,17 @@ This backlog tracks identified technical debt, deferred security enhancements, a
 - An attacker rotating more distinct keys than the cap (10000) can reset other keys' counters.
 - User-based limits cover authenticated requests only; other unauthenticated URLs are not limited.
 - Reading endpoints (report and case detail, downloads) are not limited.
+
+
+## Phase 8B headers and errors backlog (DRAFT)
+
+- Closed by tests SEC-HDR-01 and SEC-HDR-04: "audit pages need Cache-Control no-store" (Phase 6C) and "admin pages need Cache-Control no-store" (Phase 7B). The old rows stay as history.
+- DECISION F-003: forbidden actions on a visible case return 403 while SR-02 says 404; keep and reword SR-02, or switch the routes to 404 and rewrite the pinned Phase 3/4 tests.
+- The case list, the new-case form and case creation by AUDITOR_ADMIN are 404 without an ACCESS_DENIED audit event (no object is targeted); decide whether they should be audited.
+- The CSP is sent as two headers to keep the original value unchanged; merge them when TEST-BASE-002 may be updated. Check the CSP in a real browser console: VERIFY MANUALLY.
+- Referrer-Policy stays strict-origin-when-cross-origin (SR-09 text); no-referrer is possible and stricter.
+- Permissions-Policy denies only camera, microphone and geolocation; extend it (payment, usb, sensors) when its assertion may be updated.
+- Static CSS is served no-store; add a cache lifetime with a content hash in the file name if load time matters.
+- HSTS needs TLS; verify it behind the reverse proxy in Phase 12, and consider preload only after that.
+- A real oversize upload over HTTP is not tested; the container may drop the connection.
+- The 429 page and the 500 page after a failed audit append use their own id instead of the request id (header, page and log line agree with each other).

@@ -152,12 +152,14 @@ public class RateLimitFilter extends OncePerRequestFilter {
 
     private void block(HttpServletRequest request, HttpServletResponse response, LimiterName name,
                        long retryAfterSeconds, boolean api) throws IOException {
+        // Fresh id for this 429; the response header is replaced so header, page and log line carry the same id.
         UUID correlationId = UUID.randomUUID();
         if (firstInWindow(name)) {
             LOGGER.warn("Rate limit exceeded limiter={} correlationId={}", fixedLabel(name), correlationId);
         }
         response.setStatus(429);
         response.setHeader("Retry-After", Long.toString(retryAfterSeconds));
+        response.setHeader(com.casevault.web.CorrelationIdFilter.HEADER, correlationId.toString());
         response.setHeader("Cache-Control", "no-store");
         if (api) {
             response.setContentType("text/plain;charset=UTF-8");
