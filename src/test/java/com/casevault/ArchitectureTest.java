@@ -130,6 +130,16 @@ class ArchitectureTest {
             .because("self-action, last-admin and session rules live in the service; controllers must not touch users or sessions directly");
 
     @ArchTest
+    static final ArchRule reportWebControllerUsesServiceInterfaceOnly = noClasses()
+            .that().haveSimpleName("ReportWebController")
+            .should().dependOnClassesThat().resideInAnyPackage("..repository..")
+            .orShould().dependOnClassesThat().haveSimpleName("Report")
+            .orShould().dependOnClassesThat().haveSimpleName("Case")
+            .orShould().dependOnClassesThat().haveSimpleName("User")
+            .as("SEC-REPORT-ARCH-04: The report web controller depends on ReportService and DTOs only, never on repositories or report, case or user entities")
+            .because("report authorisation, four-eyes and state rules live in the service layer");
+
+    @ArchTest
     static final ArchRule controllersMustNotAccessEvidenceRepositoryOrStorage = noClasses()
             .that().resideInAPackage("..controller..")
             .should().dependOnClassesThat().haveNameMatching(".*(EvidenceRepository|EvidenceStorageService|EvidenceStore).*")

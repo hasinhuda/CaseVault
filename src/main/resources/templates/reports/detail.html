@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head th:replace="~{layout :: htmlhead('Incident Report')}">
+    <title>Incident Report - CaseVault</title>
+</head>
+<body>
+<a href="#main-content" class="skip-link">Skip to main content</a>
+
+<div th:replace="~{layout :: appheader}"></div>
+
+<div class="app-shell">
+    <aside th:replace="~{layout :: appsidebar('cases')}"></aside>
+
+    <main id="main-content" class="content-wrapper">
+        <div class="page-header">
+            <div>
+                <a th:href="@{/cases/{id}/reports(id=${caseId})}" class="btn btn-secondary btn-sm mb-16">&larr; Back to reports</a>
+                <h1>Incident report</h1>
+                <p class="page-subtitle">
+                    Author: <span th:text="${report.authorUsername()}">author</span>
+                    &bull; Created (UTC): <span th:text="${report.createdAt()}">date</span>
+                    &bull; Last change (UTC): <span th:text="${report.updatedAt()}">date</span>
+                </p>
+            </div>
+        </div>
+
+        <div th:if="${successMessage}" class="alert alert-success" th:text="${successMessage}" role="status" aria-live="polite"></div>
+        <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}" role="alert" aria-live="assertive"></div>
+
+        <nav class="tabs-nav" aria-label="Case Sections">
+            <a th:href="@{/cases/{id}(id=${caseId}, tab='overview')}">Overview</a>
+            <a th:href="@{/cases/{id}(id=${caseId}, tab='notes')}">Investigation Notes</a>
+            <a th:href="@{/cases/{id}(id=${caseId}, tab='actions')}">Remediation Actions</a>
+            <a th:href="@{/cases/{id}(id=${caseId}, tab='evidence')}">Evidence</a>
+            <a th:href="@{/cases/{id}/reports(id=${caseId})}" class="active" aria-current="page">Reports</a>
+        </nav>
+
+        <!-- Stepper: every step has a text state, colour is only a second signal -->
+        <div class="card" th:with="draftDone=${report.status() != 'DRAFT'}, submittedDone=${report.status() == 'APPROVED'}">
+            <h2 class="card-title">Progress</h2>
+            <ol class="stepper" aria-label="Report progress">
+                <li th:class="${report.status() == 'DRAFT' ? 'step step-current' : 'step step-done'}">
+                    <span class="step-name">1. Draft</span>
+                    <span class="step-state" th:text="${report.status() == 'DRAFT' ? 'Current step' : 'Completed'}">Current step</span>
+                </li>
+                <li th:class="${report.status() == 'SUBMITTED' ? 'step step-current' : (report.status() == 'APPROVED' ? 'step step-done' : 'step step-todo')}">
+                    <span class="step-name">2. Submitted</span>
+                    <span class="step-state" th:text="${report.status() == 'SUBMITTED' ? 'Current step' : (report.status() == 'APPROVED' ? 'Completed' : 'Not reached')}">Not reached</span>
+                </li>
+                <li th:class="${report.status() == 'APPROVED' ? 'step step-current' : 'step step-todo'}">
+                    <span class="step-name">3. Approved</span>
+                    <span class="step-state" th:text="${report.status() == 'APPROVED' ? 'Current step (final)' : 'Not reached'}">Not reached</span>
+                </li>
+            </ol>
+            <p>
+                Status:
+                <span th:if="${report.status() == 'DRAFT'}" class="status-badge status-neutral">Draft</span>
+                <span th:if="${report.status() == 'SUBMITTED'}" class="status-badge status-warn">Submitted</span>
+                <span th:if="${report.status() == 'APPROVED'}" class="status-badge status-ok">Approved</span>
+            </p>
+            <p th:if="${report.submittedAt() != null}">Submitted (UTC): <span th:text="${report.submittedAt()}">date</span></p>
+            <p th:if="${report.approvedAt() != null}">Approved (UTC): <span th:text="${report.approvedAt()}">date</span></p>
+
+            <form th:if="${report.status() == 'DRAFT' and isAuthor and role == 'ANALYST'}"
+                  th:action="@{/cases/{c}/reports/{r}/submit(c=${caseId}, r=${report.id()})}" method="post">
+                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                <button type="submit" class="btn btn-primary btn-sm">Submit for approval</button>
+            </form>
+            <form th:if="${report.status() == 'SUBMITTED' and !isAuthor and role == 'MANAGER'}"
+                  th:action="@{/cases/{c}/reports/{r}/approve(c=${caseId}, r=${report.id()})}" method="post">
+                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                <button type="submit" class="btn btn-primary btn-sm">Approve report</button>
+            </form>
+        </div>
+
+        <div class="card">
+            <h2 class="card-title">Report text</h2>
+            <div class="report-body" th:text="${report.body()}">Report body</div>
+        </div>
+
+        <div class="card" th:if="${report.status() == 'DRAFT' and isAuthor and role == 'ANALYST'}">
+            <h2 class="card-title">Edit draft</h2>
+            <form th:action="@{/cases/{c}/reports/{r}/update(c=${caseId}, r=${report.id()})}" method="post">
+                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                <div class="form-group">
+                    <label for="report-edit-body">Report text (plain text, 1 to 10000 characters)</label>
+                    <textarea id="report-edit-body" name="body" class="form-control" rows="10" required maxlength="10000"
+                              th:text="${draftBody}"></textarea>
+                </div>
+                <p class="text-muted">The limit is 10000 characters. Line breaks and tabs are kept; other control characters are rejected.</p>
+                <button type="submit" class="btn btn-secondary btn-sm">Save draft</button>
+            </form>
+        </div>
+    </main>
+</div>
+
+<div th:replace="~{layout :: appfooter}"></div>
+</body>
+</html>

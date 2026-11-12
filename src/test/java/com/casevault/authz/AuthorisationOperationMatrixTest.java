@@ -885,4 +885,46 @@ public class AuthorisationOperationMatrixTest {
         mockMvc.perform(get("/api/cases/{id}", caseA1AssignedToBob.getId()).with(authentication(authFor(auditorUser))))
                 .andExpect(status().isNotFound());
     }
+
+    // ---- Phase 7C: HTTP report operations (ADDED; no existing test changed) ----
+
+    @Test
+    @DisplayName("SEC-REPORT-WEB-AUTHZ-01: HTTP report routes: assigned analyst creates; managers in scope read; client and other roles get 404 for drafts; auditor 404")
+    void reportHttpMatrix() throws Exception {
+        String base = "/cases/" + caseA1AssignedToBob.getId() + "/reports";
+        // create over HTTP: only the assigned analyst
+        org.springframework.test.web.servlet.MvcResult created = mockMvc.perform(post(base).param("body", "HTTP matrix draft")
+                .with(authentication(authFor(analystBob))).with(csrf())).andReturn();
+        assertEquals(302, created.getResponse().getStatus());
+        String url = created.getResponse().getRedirectedUrl();
+        String reportId = url.substring(url.lastIndexOf('/') + 1);
+        for (User denied : new User[]{managerAlice, clientManagerA, clientUserA, clientUserB, auditorUser}) {
+            mockMvc.perform(post(base).param("body", "x").with(authentication(authFor(denied))).with(csrf()))
+                    .andExpect(status().isNotFound());
+        }
+        // read the draft: assigned analyst and managers in scope
+        for (User ok : new User[]{analystBob, managerAlice, clientManagerA}) {
+            mockMvc.perform(get(base + "/" + reportId).with(authentication(authFor(ok)))).andExpect(status().isOk());
+            mockMvc.perform(get(base).with(authentication(authFor(ok)))).andExpect(status().isOk());
+        }
+        for (User denied : new User[]{clientUserA, clientUserB, auditorUser}) {
+            mockMvc.perform(get(base + "/" + reportId).with(authentication(authFor(denied)))).andExpect(status().isNotFound());
+        }
+        mockMvc.perform(get(base).with(authentication(authFor(clientUserA)))).andExpect(status().isOk());
+        mockMvc.perform(get(base).with(authentication(authFor(clientUserB)))).andExpect(status().isNotFound());
+        mockMvc.perform(get(base).with(authentication(authFor(auditorUser)))).andExpect(status().isNotFound());
+        // submit and approve over HTTP
+        mockMvc.perform(post(base + "/" + reportId + "/submit").with(authentication(authFor(managerAlice))).with(csrf()))
+                .andExpect(status().isNotFound());
+        mockMvc.perform(post(base + "/" + reportId + "/submit").with(authentication(authFor(analystBob))).with(csrf()))
+                .andExpect(status().is3xxRedirection());
+        mockMvc.perform(post(base + "/" + reportId + "/approve").with(authentication(authFor(analystBob))).with(csrf()))
+                .andExpect(status().isNotFound());
+        mockMvc.perform(post(base + "/" + reportId + "/approve").with(authentication(authFor(managerAlice))).with(csrf()))
+                .andExpect(status().is3xxRedirection());
+        // approved: now the client of the case organisation can read it, another tenant cannot
+        mockMvc.perform(get(base + "/" + reportId).with(authentication(authFor(clientUserA)))).andExpect(status().isOk());
+        mockMvc.perform(get(base + "/" + reportId).with(authentication(authFor(clientUserB)))).andExpect(status().isNotFound());
+        mockMvc.perform(get(base + "/" + reportId).with(authentication(authFor(auditorUser)))).andExpect(status().isNotFound());
+    }
 }

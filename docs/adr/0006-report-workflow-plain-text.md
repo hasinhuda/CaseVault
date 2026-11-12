@@ -23,3 +23,10 @@ Accepted (Phase 7A, DRAFT until reviewed). Related: FR-11, FR-12, SR-02, SR-06 i
 ## Consequences
 - No HTTP endpoint or page exists yet (Phase 7C); today the service bean is the only entry point and the tests call it with a real authentication in the security context.
 - No report history or versioning: an edit replaces the body.
+
+## Addendum (Phase 7C): HTTP layer and optimistic locking
+- Routes: `GET /cases/{caseId}/reports` (list, newest first: the controller reverses the service order), `GET /cases/{caseId}/reports/{reportId}`, `POST /cases/{caseId}/reports`, and `POST .../update`, `.../submit`, `.../approve`. `ReportWebController` calls `ReportService` only and reads one form field, `body`; everything else in the request is ignored, so status, author, approver, case and organisation cannot be set from a request. Authorisation is unchanged from 7A (404 for anything not permitted, never 403).
+- Output: the body is rendered with `th:text` inside an element styled `white-space: pre-wrap` (line breaks kept by CSS, no HTML built). Tests SEC-REPORT-WEB-03 show a script tag and an image tag with an onerror attribute escaped on every page that can show them.
+- Failures render the page again with a fixed message and HTTP 400 (rejected body, invalid transition, four-eyes) or HTTP 409 (concurrent change); successes redirect (post-redirect-get). Messages shown are fixed texts; the typed body is shown back only inside the escaped text area.
+- Optimistic locking: `V10__report_version.sql` adds `reports.version`, mapped with `@Version`. When two managers approve the same SUBMITTED report at the same moment, one commit succeeds and the other fails with an optimistic-locking error, shown as HTTP 409 with the text that the report was changed by someone else. Exactly one `REPORT_TRANSITION` event is written, because the event is appended only after a successful commit (test SEC-REPORT-WEB-10, H2).
+- The 7A note "no optimistic locking" no longer applies to reports.

@@ -87,3 +87,14 @@ This backlog tracks identified technical debt, deferred security enhancements, a
 - The health page is a minimal set (database, evidence storage writable, last audit verification, head sequence). "Writable" is a permission check and writes nothing.
 - A refused admin action is shown as a flash message; there is no rate limit on admin actions (Phase 8).
 - Admin pages need Cache-Control no-store (Phase 8), like the audit pages.
+
+## Phase 7C reports backlog (DRAFT)
+
+- Unlimited concurrent sessions per user: a cap such as 3 is a Phase 8 candidate.
+- No reject or return-to-draft step for reports.
+- No report history or versions: an edit replaces the body (the new version column is a lock counter, not a history).
+- No report export or download.
+- Viewing reports is not audited (only create, submit and approve).
+- The concurrent-approval test runs on H2; the PostgreSQL behaviour of the same versioned update is not tested.
+- Concurrent edits or submits of one report are protected by the same lock but have no concurrent test.
+- Contrast and keyboard behaviour of the report pages were not measured with a tool: VERIFY MANUALLY.

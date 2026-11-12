@@ -57,6 +57,11 @@ public class Report {
     @Column(name = "approved_at")
     private Instant approvedAt;
 
+    /** Optimistic lock: two concurrent changes of one report cannot both be committed. */
+    @jakarta.persistence.Version
+    @Column(name = "version", nullable = false)
+    private Long version;
+
     protected Report() {
     }
 

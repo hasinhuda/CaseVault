@@ -170,3 +170,15 @@ All Phase 5 evidence requirements (Groups A through G) verified. Phase 6 cryptog
 | SR-08-ADMIN | Admin templates: th:text only, no inline script/style/handler, CSP unchanged | [templates/admin](../src/main/resources/templates/admin) | SEC-ADMIN-15, SEC-CASE-13, SEC-EVID-UI-04 | CI `build-test-coverage` | Verified |
 | ARCH-ADMIN | Controllers use only the AdminUserService interface | [ArchitectureTest.java](../src/test/java/com/casevault/ArchitectureTest.java) | SEC-ADMIN-ARCH-01 | CI `build-test-coverage` | Verified |
 | TEST-ADMIN-DOC | Admin attack-to-test table | [admin-tests.md](assurance/admin-tests.md) | n/a | n/a | Documentation |
+
+## Phase 7C: Report Pages (DRAFT)
+
+| Requirement ID | Description | Source / Config | Automated Test / Gate | CI Verification | Status |
+|---|---|---|---|---|---|
+| FR-11 (HTTP) | Analyst drafts and edits reports in the Reports tab; unapproved reports hidden from clients over HTTP | [ReportWebController.java](../src/main/java/com/casevault/controller/ReportWebController.java), [reports/list.html](../src/main/resources/templates/reports/list.html) | SEC-REPORT-WEB-01, -05, -07 ([ReportWebTest.java](../src/test/java/com/casevault/reports/ReportWebTest.java)), SEC-REPORT-WEB-AUTHZ-01 | CI `build-test-coverage` | Verified over HTTP |
+| FR-12 / SR-06 (HTTP) | Four-eyes approval over HTTP; the author gets a message and no state change | [DefaultReportService.java](../src/main/java/com/casevault/service/DefaultReportService.java) | SEC-REPORT-WEB-05, SEC-REPORT-WEB-06 | CI `build-test-coverage` | Verified over HTTP |
+| SR-02 (reports, HTTP) | Cross-tenant, wrong-case, unknown and malformed ids are 404; auditor 404; CSRF on every POST | [ReportWebController.java](../src/main/java/com/casevault/controller/ReportWebController.java) | SEC-REPORT-WEB-01, -02, -04 | CI `build-test-coverage` | Verified over HTTP |
+| SR-08 (reports) | Report text escaped on output (th:text, pre-wrap), no inline script/style/handler | [reports/detail.html](../src/main/resources/templates/reports/detail.html) | SEC-REPORT-WEB-03, SEC-REPORT-WEB-12, SEC-CASE-13, SEC-EVID-UI-04 | CI `build-test-coverage` | Verified |
+| FR-13 (reports, HTTP) | One REPORT_TRANSITION per successful transition over HTTP; no body in audit rows or logs; append failure shows the safe error page | [DefaultReportService.java](../src/main/java/com/casevault/service/DefaultReportService.java) | SEC-REPORT-WEB-09, SEC-REPORT-WEB-11 | CI `build-test-coverage` | Verified |
+| REPORT-LOCK | Optimistic locking: concurrent approval has one winner (HTTP 409 for the loser), one event | [V10__report_version.sql](../src/main/resources/db/migration/V10__report_version.sql), [Report.java](../src/main/java/com/casevault/model/Report.java) | SEC-REPORT-WEB-10, SEC-DB-001 | CI `build-test-coverage` | Verified on H2 and migration on PostgreSQL |
+| ARCH-REPORT-WEB | The report web controller depends on the service interface and DTOs only | [ArchitectureTest.java](../src/test/java/com/casevault/ArchitectureTest.java) | SEC-REPORT-ARCH-04 | CI `build-test-coverage` | Verified |
