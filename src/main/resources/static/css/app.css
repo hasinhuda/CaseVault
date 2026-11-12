@@ -759,3 +759,47 @@ footer.app-footer {
         align-items: stretch;
     }
 }
+
+/* Audit log view (Phase 6C): status text plus colour, never colour alone. Dark text on a light tint keeps >= 4.5:1. */
+.status-badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 4px;
+    border: 2px solid var(--text-secondary);
+    background-color: var(--bg-card);
+    color: var(--text-primary);
+    font-weight: 700;
+}
+
+.status-ok {
+    border-color: var(--success-color);
+    background-color: var(--success-bg);
+}
+
+.status-bad {
+    border-color: var(--danger-color);
+    background-color: var(--danger-bg);
+}
+
+.status-neutral {
+    border-color: var(--text-secondary);
+    background-color: var(--bg-page);
+}
+
+.chain-status p {
+    margin-bottom: 8px;
+}
+
+.mono {
+    font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+    font-size: 0.85rem;
+}
+
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+}

@@ -36,6 +36,9 @@
         <span th:if="${role == 'AUDITOR_ADMIN'}" class="sidebar-restricted-tag" aria-disabled="true">
             Cases (Quarantined)
         </span>
+        <a th:if="${role == 'AUDITOR_ADMIN'}" th:href="@{/audit}" th:class="${activeMenu == 'audit' ? 'sidebar-link active' : 'sidebar-link'}">
+            Audit log
+        </a>
         <a th:if="${role == 'CLIENT'}" th:href="@{/cases/new}" th:class="${activeMenu == 'new-case' ? 'sidebar-link active' : 'sidebar-link'}">
             Report Incident
         </a>

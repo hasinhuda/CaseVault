@@ -2,12 +2,16 @@ package com.casevault.config;
 
 import com.casevault.repository.UserRepository;
 import com.casevault.security.CaseVaultAuthenticationProvider;
+import com.casevault.security.CaseVaultUserPrincipal;
 import com.casevault.security.SessionAbsoluteTimeoutFilter;
+import com.casevault.service.AuditEventRecorder;
+import com.casevault.service.AuditEventType;
 import com.casevault.security.UserStatusEnforcementFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.security.authentication.ProviderManager;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -33,10 +37,13 @@ public class SecurityConfig {
 
     private final CaseVaultAuthenticationProvider authenticationProvider;
     private final UserRepository userRepository;
+    private final AuditEventRecorder auditEventRecorder;
 
-    public SecurityConfig(CaseVaultAuthenticationProvider authenticationProvider, UserRepository userRepository) {
+    public SecurityConfig(CaseVaultAuthenticationProvider authenticationProvider, UserRepository userRepository,
+                          AuditEventRecorder auditEventRecorder) {
         this.authenticationProvider = authenticationProvider;
         this.userRepository = userRepository;
+        this.auditEventRecorder = auditEventRecorder;
     }
 
     @Bean
@@ -49,7 +56,10 @@ public class SecurityConfig {
         delegatingEntryPoint.setDefaultEntryPoint(new LoginUrlAuthenticationEntryPoint("/login"));
 
         http
-            .authenticationProvider(authenticationProvider)
+            // A parent-less ProviderManager: registering the provider with HttpSecurity AND letting Spring Boot add
+            // it to the global manager made every failed login run the provider twice (double lockout counting and
+            // double audit events). One manager, one invocation.
+            .authenticationManager(new ProviderManager(authenticationProvider))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/actuator/health", "/actuator/info").permitAll()
                 .requestMatchers("/login", "/error", "/css/**", "/js/**", "/images/**").permitAll()
@@ -65,10 +75,13 @@ public class SecurityConfig {
             .httpBasic(Customizer.withDefaults())
             .logout(logout -> logout
                 .logoutUrl("/logout")
-                .logoutSuccessHandler((request, response, authentication) ->
+                .logoutSuccessHandler((request, response, authentication) -> {
+                    if (authentication != null && authentication.getPrincipal() instanceof CaseVaultUserPrincipal principal) {
+                        auditEventRecorder.record(AuditEventType.LOGOUT, principal.getUserId(), null, "SUCCESS");
+                    }
                     new org.springframework.security.web.DefaultRedirectStrategy()
-                        .sendRedirect(request, response, "/login?logout=true")
-                )
+                        .sendRedirect(request, response, "/login?logout=true");
+                })
                 .invalidateHttpSession(true)
                 .clearAuthentication(true)
                 .deleteCookies("JSESSIONID")

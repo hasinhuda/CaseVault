@@ -1,6 +1,13 @@
 package com.casevault.controller;
 
+import com.casevault.exception.AuditAppendFailedException;
 import com.casevault.exception.BadRequestException;
+import com.casevault.security.CaseVaultUserPrincipal;
+import com.casevault.service.AuditEventRecorder;
+import com.casevault.service.AuditEventType;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import com.casevault.exception.InvalidStatusTransitionException;
 import com.casevault.exception.ResourceNotFoundException;
 import org.slf4j.Logger;
@@ -31,6 +38,14 @@ import java.util.UUID;
 public class GlobalExceptionHandler {
 
     private static final Logger logger = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+
+    private AuditEventRecorder auditEventRecorder;
+
+    /** Optional so the handler can still be constructed without a Spring context. */
+    @Autowired(required = false)
+    public void setAuditEventRecorder(AuditEventRecorder auditEventRecorder) {
+        this.auditEventRecorder = auditEventRecorder;
+    }
 
     @ExceptionHandler(ResourceNotFoundException.class)
     public Object handleResourceNotFound(ResourceNotFoundException ex, WebRequest request) {
@@ -134,10 +149,20 @@ public class GlobalExceptionHandler {
         return mav;
     }
 
+    /**
+     * The business action already committed but its audit event could not be appended (fail-closed toward the
+     * user). Shows the safe error page with the correlation id that was logged with the ERROR line.
+     */
+    @ExceptionHandler(AuditAppendFailedException.class)
+    public Object handleAuditAppendFailed(AuditAppendFailedException ex, WebRequest request) {
+        return internalServerError(ex.getCorrelationId(), request);
+    }
+
     @ExceptionHandler(AccessDeniedException.class)
     public Object handleAccessDenied(AccessDeniedException ex, WebRequest request) {
         String correlationId = UUID.randomUUID().toString();
         logger.warn("AccessDenied handled for correlationId={}", correlationId);
+        recordAccessDenied();
 
         if (isJsonRequest(request)) {
             Map<String, Object> body = new HashMap<>();
@@ -160,7 +185,10 @@ public class GlobalExceptionHandler {
     public Object handleUncaughtException(Exception ex, WebRequest request) {
         String correlationId = UUID.randomUUID().toString();
         logger.error("Internal Server Error occurred", ex);
+        return internalServerError(correlationId, request);
+    }
 
+    private Object internalServerError(String correlationId, WebRequest request) {
         if (isJsonRequest(request)) {
             Map<String, Object> body = new HashMap<>();
             body.put("error", "Internal Server Error");
@@ -176,6 +204,16 @@ public class GlobalExceptionHandler {
         mav.addObject("message", "An unexpected error occurred. Reference correlation ID: " + correlationId);
         mav.addObject("correlationId", correlationId);
         return mav;
+    }
+
+    private void recordAccessDenied() {
+        if (auditEventRecorder == null) {
+            return;
+        }
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String userId = (authentication != null && authentication.getPrincipal() instanceof CaseVaultUserPrincipal principal)
+                ? principal.getUserId() : null;
+        auditEventRecorder.record(AuditEventType.ACCESS_DENIED, userId, null, "NOT_PERMITTED");
     }
 
     private boolean isJsonRequest(WebRequest request) {
