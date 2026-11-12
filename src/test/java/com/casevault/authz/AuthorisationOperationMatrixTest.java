@@ -68,6 +68,9 @@ public class AuthorisationOperationMatrixTest {
     @Autowired
     private ObjectMapper objectMapper;
 
+    @Autowired
+    private com.casevault.repository.ReportRepository reportRepository;
+
     private Organisation orgInternal;
     private Organisation orgA;
     private Organisation orgB;
@@ -88,6 +91,7 @@ public class AuthorisationOperationMatrixTest {
 
     @BeforeEach
     void setUp() {
+        reportRepository.deleteAll();
         remediationActionRepository.deleteAll();
         caseNoteRepository.deleteAll();
         evidenceRepository.deleteAll();
@@ -782,5 +786,145 @@ public class AuthorisationOperationMatrixTest {
                 com.casevault.exception.ResourceNotFoundException.class,
                 () -> service.uploadEvidence(caseA1AssignedToBob.getId(), file, principalFor(auditorUser))
         );
+    }
+
+    // ---- Phase 7A: report role x operation matrix (ADDED; no existing test changed) ----
+
+    private com.casevault.service.DefaultReportService reportService() {
+        return new com.casevault.service.DefaultReportService(reportRepository, caseRepository, userRepository,
+                new com.casevault.security.AccessPolicy(), new com.casevault.service.LoggingAuditEventRecorder());
+    }
+
+    private void assertReportNotFound(org.junit.jupiter.api.function.Executable call, String what) {
+        org.junit.jupiter.api.Assertions.assertThrows(com.casevault.exception.ResourceNotFoundException.class, call, what);
+    }
+
+    @Test
+    @DisplayName("SEC-REPORT-AUTHZ-01: role x operation matrix for report create, update, submit, approve, list and get (404, never 403)")
+    void reportRoleOperationMatrix() {
+        com.casevault.service.DefaultReportService svc = reportService();
+        Instant now = Instant.now();
+        User analystEve = createUser("analyst_eve_" + UUID.randomUUID().toString().substring(0, 8), orgInternal, Role.ANALYST, now);
+        String caseId = caseA1AssignedToBob.getId();
+        com.casevault.dto.ReportRequestDto body = new com.casevault.dto.ReportRequestDto("Matrix report body");
+
+        // create: only the assigned analyst
+        for (User denied : new User[]{analystEve, managerAlice, clientManagerA, clientUserA, clientUserB, auditorUser}) {
+            assertReportNotFound(() -> svc.createDraft(caseId, body, principalFor(denied)), "create by " + denied.getRole());
+        }
+        assertReportNotFound(() -> svc.createDraft(caseA2Unassigned.getId(), body, principalFor(analystBob)), "create on unassigned case");
+        com.casevault.dto.ReportResponseDto draft = svc.createDraft(caseId, body, principalFor(analystBob));
+        assertEquals("DRAFT", draft.status());
+        String reportId = draft.id();
+
+        // get/list of a DRAFT: analyst (assigned) and managers in scope only
+        for (User allowed : new User[]{analystBob, managerAlice, clientManagerA}) {
+            assertEquals(reportId, svc.get(caseId, reportId, principalFor(allowed)).id());
+            assertEquals(1, svc.list(caseId, principalFor(allowed)).size());
+        }
+        for (User denied : new User[]{clientUserA, analystEve, clientUserB, auditorUser}) {
+            assertReportNotFound(() -> svc.get(caseId, reportId, principalFor(denied)), "get draft by " + denied.getRole());
+        }
+        assertEquals(0, svc.list(caseId, principalFor(clientUserA)).size(), "client list hides drafts");
+        for (User denied : new User[]{clientUserB, analystEve, auditorUser}) {
+            assertReportNotFound(() -> svc.list(caseId, principalFor(denied)), "list by " + denied.getRole());
+        }
+
+        // update: author only
+        for (User denied : new User[]{analystEve, managerAlice, clientManagerA, clientUserA, clientUserB, auditorUser}) {
+            assertReportNotFound(() -> svc.updateDraft(caseId, reportId, body, principalFor(denied)), "update by " + denied.getRole());
+        }
+        assertEquals("DRAFT", svc.updateDraft(caseId, reportId, new com.casevault.dto.ReportRequestDto("Edited"), principalFor(analystBob)).status());
+
+        // submit: author only
+        for (User denied : new User[]{analystEve, managerAlice, clientManagerA, clientUserA, clientUserB, auditorUser}) {
+            assertReportNotFound(() -> svc.submit(caseId, reportId, principalFor(denied)), "submit by " + denied.getRole());
+        }
+        assertEquals("SUBMITTED", svc.submit(caseId, reportId, principalFor(analystBob)).status());
+
+        // approve: managers who can see the case only
+        for (User denied : new User[]{analystBob, analystEve, clientUserA, clientUserB, auditorUser}) {
+            assertReportNotFound(() -> svc.approve(caseId, reportId, principalFor(denied)), "approve by " + denied.getRole());
+        }
+        // a MANAGER of another organisation cannot see the case (client-org manager of org A on case B1)
+        assertReportNotFound(() -> svc.approve(caseB1.getId(), reportId, principalFor(clientManagerA)), "manager of other org");
+        com.casevault.dto.ReportResponseDto approved = svc.approve(caseId, reportId, principalFor(managerAlice));
+        assertEquals("APPROVED", approved.status());
+        assertEquals(managerAlice.getId(), approved.approvedById());
+
+        // after approval the CLIENT of the case organisation sees it; other tenants and the auditor still do not
+        assertEquals(reportId, svc.get(caseId, reportId, principalFor(clientUserA)).id());
+        assertEquals(1, svc.list(caseId, principalFor(clientUserA)).size());
+        assertReportNotFound(() -> svc.get(caseId, reportId, principalFor(clientUserB)), "other tenant");
+        assertReportNotFound(() -> svc.get(caseId, reportId, principalFor(auditorUser)), "auditor");
+        assertReportNotFound(() -> svc.list(caseId, principalFor(auditorUser)), "auditor list");
+    }
+
+    // ---- Phase 7B: admin operation matrix (ADDED; no existing test changed) ----
+
+    @Test
+    @DisplayName("SEC-ADMIN-AUTHZ-01: admin routes and actions: only AUDITOR_ADMIN is served; MANAGER, ANALYST and CLIENT roles get 404 (never 403)")
+    void adminOperationMatrix() throws Exception {
+        String targetId = clientUserB.getId();
+        for (User denied : new User[]{managerAlice, analystBob, clientUserA, clientManagerA}) {
+            mockMvc.perform(get("/admin/users").with(authentication(authFor(denied)))).andExpect(status().isNotFound());
+            mockMvc.perform(get("/admin/health").with(authentication(authFor(denied)))).andExpect(status().isNotFound());
+            mockMvc.perform(get("/admin/users/{id}/disable-confirm", targetId).with(authentication(authFor(denied))))
+                    .andExpect(status().isNotFound());
+            for (String action : new String[]{"disable", "enable", "revoke-sessions"}) {
+                mockMvc.perform(post("/admin/users/{id}/" + action, targetId).with(authentication(authFor(denied))).with(csrf()))
+                        .andExpect(status().isNotFound());
+            }
+        }
+        assertEquals(true, userRepository.findById(targetId).orElseThrow().isEnabled());
+        mockMvc.perform(get("/admin/users").with(authentication(authFor(auditorUser)))).andExpect(status().isOk());
+        mockMvc.perform(get("/admin/health").with(authentication(authFor(auditorUser)))).andExpect(status().isOk());
+        mockMvc.perform(get("/admin/users/{id}/disable-confirm", targetId).with(authentication(authFor(auditorUser))))
+                .andExpect(status().isOk());
+        // The auditor still has no access to case content.
+        mockMvc.perform(get("/api/cases/{id}", caseA1AssignedToBob.getId()).with(authentication(authFor(auditorUser))))
+                .andExpect(status().isNotFound());
+    }
+
+    // ---- Phase 7C: HTTP report operations (ADDED; no existing test changed) ----
+
+    @Test
+    @DisplayName("SEC-REPORT-WEB-AUTHZ-01: HTTP report routes: assigned analyst creates; managers in scope read; client and other roles get 404 for drafts; auditor 404")
+    void reportHttpMatrix() throws Exception {
+        String base = "/cases/" + caseA1AssignedToBob.getId() + "/reports";
+        // create over HTTP: only the assigned analyst
+        org.springframework.test.web.servlet.MvcResult created = mockMvc.perform(post(base).param("body", "HTTP matrix draft")
+                .with(authentication(authFor(analystBob))).with(csrf())).andReturn();
+        assertEquals(302, created.getResponse().getStatus());
+        String url = created.getResponse().getRedirectedUrl();
+        String reportId = url.substring(url.lastIndexOf('/') + 1);
+        for (User denied : new User[]{managerAlice, clientManagerA, clientUserA, clientUserB, auditorUser}) {
+            mockMvc.perform(post(base).param("body", "x").with(authentication(authFor(denied))).with(csrf()))
+                    .andExpect(status().isNotFound());
+        }
+        // read the draft: assigned analyst and managers in scope
+        for (User ok : new User[]{analystBob, managerAlice, clientManagerA}) {
+            mockMvc.perform(get(base + "/" + reportId).with(authentication(authFor(ok)))).andExpect(status().isOk());
+            mockMvc.perform(get(base).with(authentication(authFor(ok)))).andExpect(status().isOk());
+        }
+        for (User denied : new User[]{clientUserA, clientUserB, auditorUser}) {
+            mockMvc.perform(get(base + "/" + reportId).with(authentication(authFor(denied)))).andExpect(status().isNotFound());
+        }
+        mockMvc.perform(get(base).with(authentication(authFor(clientUserA)))).andExpect(status().isOk());
+        mockMvc.perform(get(base).with(authentication(authFor(clientUserB)))).andExpect(status().isNotFound());
+        mockMvc.perform(get(base).with(authentication(authFor(auditorUser)))).andExpect(status().isNotFound());
+        // submit and approve over HTTP
+        mockMvc.perform(post(base + "/" + reportId + "/submit").with(authentication(authFor(managerAlice))).with(csrf()))
+                .andExpect(status().isNotFound());
+        mockMvc.perform(post(base + "/" + reportId + "/submit").with(authentication(authFor(analystBob))).with(csrf()))
+                .andExpect(status().is3xxRedirection());
+        mockMvc.perform(post(base + "/" + reportId + "/approve").with(authentication(authFor(analystBob))).with(csrf()))
+                .andExpect(status().isNotFound());
+        mockMvc.perform(post(base + "/" + reportId + "/approve").with(authentication(authFor(managerAlice))).with(csrf()))
+                .andExpect(status().is3xxRedirection());
+        // approved: now the client of the case organisation can read it, another tenant cannot
+        mockMvc.perform(get(base + "/" + reportId).with(authentication(authFor(clientUserA)))).andExpect(status().isOk());
+        mockMvc.perform(get(base + "/" + reportId).with(authentication(authFor(clientUserB)))).andExpect(status().isNotFound());
+        mockMvc.perform(get(base + "/" + reportId).with(authentication(authFor(auditorUser)))).andExpect(status().isNotFound());
     }
 }

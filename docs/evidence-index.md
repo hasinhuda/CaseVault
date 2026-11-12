@@ -143,3 +143,42 @@ All Phase 5 evidence requirements (Groups A through G) verified. Phase 6 cryptog
 | SR-13-UI | Chain verification on demand: badge, one run at a time, AUDIT_CHAIN_VERIFIED event, CSRF on POST | [AuditQueryService.java](../src/main/java/com/casevault/service/AuditQueryService.java) | SEC-AUDIT-UI-01, -04, -11, -12, -13 | CI `build-test-coverage` | Verified |
 | SR-08-UI | Audit template: th:text only, no inline script/style/handler, CSP unchanged | [audit/list.html](../src/main/resources/templates/audit/list.html) | SEC-AUDIT-UI-14, SEC-CASE-13, SEC-EVID-UI-04 | CI `build-test-coverage` | Verified |
 | ARCH-AUDIT-07 | Only AuditQueryService reads the audit log through AuditLogReader | [ArchitectureTest.java](../src/test/java/com/casevault/ArchitectureTest.java) | SEC-AUDIT-ARCH-07 | CI `build-test-coverage` | Verified |
+
+## Phase 7A: Reports Backend (DRAFT)
+
+| Requirement ID | Description | Source / Config | Automated Test / Gate | CI Verification | Status |
+|---|---|---|---|---|---|
+| FR-11 | Analyst drafts reports linked to a case; unapproved drafts hidden from clients (service layer only, no endpoint yet) | [DefaultReportService.java](../src/main/java/com/casevault/service/DefaultReportService.java), [V8__reports.sql](../src/main/resources/db/migration/V8__reports.sql) | SEC-REPORT-AUTHZ-01, SEC-REPORT-03, SEC-REPORT-05 | CI `build-test-coverage` | Verified at service level; HTTP and UI in 7C |
+| FR-12 / SR-06 | Four-eyes: the author cannot approve; a different manager can | [DefaultReportService.java](../src/main/java/com/casevault/service/DefaultReportService.java) | SEC-REPORT-01, SEC-REPORT-02 | CI `build-test-coverage` | Verified at service level |
+| SR-02 (reports) | Cross-tenant, unauthorised and wrong-case report access is 404; auditor gets 404 | [DefaultReportService.java](../src/main/java/com/casevault/service/DefaultReportService.java) | SEC-REPORT-AUTHZ-01, SEC-REPORT-03, SEC-REPORT-04 | CI `build-test-coverage` | Verified at service level |
+| REPORT-BODY | Plain-text body, length and control-character limits, no mass assignment | [ADR 0006](adr/0006-report-workflow-plain-text.md), [ReportRequestDto.java](../src/main/java/com/casevault/dto/ReportRequestDto.java) | SEC-REPORT-05, SEC-REPORT-07 | CI `build-test-coverage` | Verified (output escaping is tested in 7C) |
+| FR-13 (reports) | REPORT_TRANSITION wired: one event per transition, actor and case id, no body | [DefaultReportService.java](../src/main/java/com/casevault/service/DefaultReportService.java) | SEC-REPORT-08, SEC-REPORT-09 | CI `build-test-coverage` | Verified |
+| DB-REPORTS | Flyway V8 on H2 and real PostgreSQL | [V8__reports.sql](../src/main/resources/db/migration/V8__reports.sql) | SEC-DB-001 ([PostgresFlywayMigrationTest.java](../src/test/java/com/casevault/db/PostgresFlywayMigrationTest.java)) | CI `build-test-coverage` | Verified |
+| ARCH-REPORT | Controllers cannot reach the report repository or implementation | [ArchitectureTest.java](../src/test/java/com/casevault/ArchitectureTest.java) | SEC-REPORT-ARCH-01, -02, -03 | CI `build-test-coverage` | Verified |
+| TEST-REPORT-DOC | Report attack-to-test table | [report-tests.md](assurance/report-tests.md) | n/a | n/a | Documentation |
+
+## Phase 7B: Admin Functions and Health (DRAFT)
+
+| Requirement ID | Description | Source / Config | Automated Test / Gate | CI Verification | Status |
+|---|---|---|---|---|---|
+| FR-14 | Admin disables or enables accounts and revokes sessions; the session dies on the next request | [DefaultAdminUserService.java](../src/main/java/com/casevault/service/DefaultAdminUserService.java), [SecurityConfig.java](../src/main/java/com/casevault/config/SecurityConfig.java) | SEC-ADMIN-09, SEC-ADMIN-10, SEC-ADMIN-11 ([AdminHttpTest.java](../src/test/java/com/casevault/admin/AdminHttpTest.java)) | CI `build-test-coverage` | Verified over HTTP |
+| FR-14 (safety) | No self-disable, no self-revoke, last active admin protected, concurrent double disable safe | [DefaultAdminUserService.java](../src/main/java/com/casevault/service/DefaultAdminUserService.java) | SEC-ADMIN-06, SEC-ADMIN-07, SEC-ADMIN-08 | CI `build-test-coverage` | Verified |
+| SR-07 (admin) | Only AUDITOR_ADMIN reaches admin pages; others 404; CSRF on every POST; auditor still has no case content | [AdminController.java](../src/main/java/com/casevault/controller/AdminController.java) | SEC-ADMIN-03, -04, -12, SEC-ADMIN-AUTHZ-01 | CI `build-test-coverage` | Verified |
+| FR-13 (admin) | ADMIN_ACCOUNT_DISABLED, ADMIN_ACCOUNT_ENABLED, ADMIN_SESSION_REVOKED wired; actor only; refusals as ACCESS_DENIED / ADMIN_REFUSED | [DefaultAdminUserService.java](../src/main/java/com/casevault/service/DefaultAdminUserService.java) | SEC-ADMIN-14 | CI `build-test-coverage` | Verified |
+| FR-15 | Minimal health page: database, evidence storage, last audit verification, head sequence; no paths, versions or secrets | [admin/health.html](../src/main/resources/templates/admin/health.html) | SEC-ADMIN-01, SEC-ADMIN-02, HealthEndpointTest (unchanged) | CI `build-test-coverage` | Verified (minimal set) |
+| DB-USERTRACE | users.status_changed_at / status_changed_by (V9) so the disabled account is traceable | [V9__user_status_trace.sql](../src/main/resources/db/migration/V9__user_status_trace.sql) | SEC-ADMIN-14, SEC-DB-001 | CI `build-test-coverage` | Verified |
+| SR-08-ADMIN | Admin templates: th:text only, no inline script/style/handler, CSP unchanged | [templates/admin](../src/main/resources/templates/admin) | SEC-ADMIN-15, SEC-CASE-13, SEC-EVID-UI-04 | CI `build-test-coverage` | Verified |
+| ARCH-ADMIN | Controllers use only the AdminUserService interface | [ArchitectureTest.java](../src/test/java/com/casevault/ArchitectureTest.java) | SEC-ADMIN-ARCH-01 | CI `build-test-coverage` | Verified |
+| TEST-ADMIN-DOC | Admin attack-to-test table | [admin-tests.md](assurance/admin-tests.md) | n/a | n/a | Documentation |
+
+## Phase 7C: Report Pages (DRAFT)
+
+| Requirement ID | Description | Source / Config | Automated Test / Gate | CI Verification | Status |
+|---|---|---|---|---|---|
+| FR-11 (HTTP) | Analyst drafts and edits reports in the Reports tab; unapproved reports hidden from clients over HTTP | [ReportWebController.java](../src/main/java/com/casevault/controller/ReportWebController.java), [reports/list.html](../src/main/resources/templates/reports/list.html) | SEC-REPORT-WEB-01, -05, -07 ([ReportWebTest.java](../src/test/java/com/casevault/reports/ReportWebTest.java)), SEC-REPORT-WEB-AUTHZ-01 | CI `build-test-coverage` | Verified over HTTP |
+| FR-12 / SR-06 (HTTP) | Four-eyes approval over HTTP; the author gets a message and no state change | [DefaultReportService.java](../src/main/java/com/casevault/service/DefaultReportService.java) | SEC-REPORT-WEB-05, SEC-REPORT-WEB-06 | CI `build-test-coverage` | Verified over HTTP |
+| SR-02 (reports, HTTP) | Cross-tenant, wrong-case, unknown and malformed ids are 404; auditor 404; CSRF on every POST | [ReportWebController.java](../src/main/java/com/casevault/controller/ReportWebController.java) | SEC-REPORT-WEB-01, -02, -04 | CI `build-test-coverage` | Verified over HTTP |
+| SR-08 (reports) | Report text escaped on output (th:text, pre-wrap), no inline script/style/handler | [reports/detail.html](../src/main/resources/templates/reports/detail.html) | SEC-REPORT-WEB-03, SEC-REPORT-WEB-12, SEC-CASE-13, SEC-EVID-UI-04 | CI `build-test-coverage` | Verified |
+| FR-13 (reports, HTTP) | One REPORT_TRANSITION per successful transition over HTTP; no body in audit rows or logs; append failure shows the safe error page | [DefaultReportService.java](../src/main/java/com/casevault/service/DefaultReportService.java) | SEC-REPORT-WEB-09, SEC-REPORT-WEB-11 | CI `build-test-coverage` | Verified |
+| REPORT-LOCK | Optimistic locking: concurrent approval has one winner (HTTP 409 for the loser), one event | [V10__report_version.sql](../src/main/resources/db/migration/V10__report_version.sql), [Report.java](../src/main/java/com/casevault/model/Report.java) | SEC-REPORT-WEB-10, SEC-DB-001 | CI `build-test-coverage` | Verified on H2 and migration on PostgreSQL |
+| ARCH-REPORT-WEB | The report web controller depends on the service interface and DTOs only | [ArchitectureTest.java](../src/test/java/com/casevault/ArchitectureTest.java) | SEC-REPORT-ARCH-04 | CI `build-test-coverage` | Verified |

@@ -100,6 +100,46 @@ class ArchitectureTest {
             .because("controllers reach the audit log only through AuditQueryService (Phase 6C); the append path is the AuditAppender interface");
 
     @ArchTest
+    static final ArchRule controllersMustNotTouchReportRepository = noClasses()
+            .that().resideInAPackage("..controller..")
+            .should().dependOnClassesThat().haveSimpleName("ReportRepository")
+            .as("SEC-REPORT-ARCH-01: Controllers cannot touch the report repository")
+            .because("report access rules (tenant, role, state, four-eyes) live in the service layer");
+
+    @ArchTest
+    static final ArchRule reportRepositoryOnlyAccessedByServices = classes()
+            .that().haveSimpleName("ReportRepository")
+            .should().onlyBeAccessed().byAnyPackage("..service..")
+            .as("SEC-REPORT-ARCH-02: ReportRepository is accessed only by service classes")
+            .because("every report read and write must pass the report service checks");
+
+    @ArchTest
+    static final ArchRule controllersMustNotBypassReportRules = noClasses()
+            .that().resideInAPackage("..controller..")
+            .should().dependOnClassesThat().haveSimpleName("DefaultReportService")
+            .as("SEC-REPORT-ARCH-03: Controllers use the ReportService interface, never the implementation")
+            .because("the interface is the single entry point of the report workflow");
+
+    @ArchTest
+    static final ArchRule controllersUseAdminServiceInterfaceOnly = noClasses()
+            .that().resideInAPackage("..controller..")
+            .should().dependOnClassesThat().haveSimpleName("DefaultAdminUserService")
+            .orShould().dependOnClassesThat().haveSimpleName("UserRepository")
+            .orShould().dependOnClassesThat().haveSimpleNameStartingWith("SessionRegistry")
+            .as("SEC-ADMIN-ARCH-01: Controllers reach admin functions only through the AdminUserService interface")
+            .because("self-action, last-admin and session rules live in the service; controllers must not touch users or sessions directly");
+
+    @ArchTest
+    static final ArchRule reportWebControllerUsesServiceInterfaceOnly = noClasses()
+            .that().haveSimpleName("ReportWebController")
+            .should().dependOnClassesThat().resideInAnyPackage("..repository..")
+            .orShould().dependOnClassesThat().haveSimpleName("Report")
+            .orShould().dependOnClassesThat().haveSimpleName("Case")
+            .orShould().dependOnClassesThat().haveSimpleName("User")
+            .as("SEC-REPORT-ARCH-04: The report web controller depends on ReportService and DTOs only, never on repositories or report, case or user entities")
+            .because("report authorisation, four-eyes and state rules live in the service layer");
+
+    @ArchTest
     static final ArchRule controllersMustNotAccessEvidenceRepositoryOrStorage = noClasses()
             .that().resideInAPackage("..controller..")
             .should().dependOnClassesThat().haveNameMatching(".*(EvidenceRepository|EvidenceStorageService|EvidenceStore).*")

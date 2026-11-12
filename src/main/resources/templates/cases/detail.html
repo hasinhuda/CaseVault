@@ -48,6 +48,7 @@
                        th:class="${activeTab == 'actions' ? 'active' : ''}">Remediation Actions (<span th:text="${#lists.size(actions)}">0</span>)</a>
                     <a th:href="@{/cases/{id}(id=${caseItem.id}, tab='evidence')}"
                        th:class="${activeTab == 'evidence' ? 'active' : ''}">Evidence (<span th:text="${#lists.size(evidence)}">0</span>)</a>
+                    <a th:if="${role != 'AUDITOR_ADMIN'}" th:href="@{/cases/{id}/reports(id=${caseItem.id})}">Reports</a>
                 </nav>
 
                 <!-- TAB: OVERVIEW -->

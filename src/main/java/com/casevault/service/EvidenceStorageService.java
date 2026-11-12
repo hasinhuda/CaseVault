@@ -107,6 +107,16 @@ public final class EvidenceStorageService implements EvidenceStore {
         return Objects.requireNonNull(aead, "aead not initialised");
     }
 
+    @Override
+    public boolean isWritable() {
+        try {
+            Files.createDirectories(storageDir);
+            return Files.isDirectory(storageDir) && Files.isWritable(storageDir);
+        } catch (IOException | RuntimeException exception) {
+            return false;
+        }
+    }
+
     private Path resolveStoredPath(String storedName) {
         if (storedName == null || !storedName.matches("[0-9a-fA-F-]{36}")) {
             throw new IllegalArgumentException("Invalid evidence storage name");

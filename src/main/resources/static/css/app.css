@@ -803,3 +803,57 @@ footer.app-footer {
     clip: rect(0 0 0 0);
     white-space: nowrap;
 }
+
+/* Reports (Phase 7C): stepper states always carry a text label; colour is a second signal only. */
+.status-warn {
+    border-color: var(--warning-color);
+    background-color: var(--warning-bg);
+}
+
+.stepper {
+    list-style: none;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.stepper .step {
+    flex: 1 1 160px;
+    padding: 10px 12px;
+    border: 2px solid var(--border-color);
+    border-radius: 6px;
+    background-color: var(--bg-card);
+    color: var(--text-primary);
+}
+
+.stepper .step-name {
+    display: block;
+    font-weight: 700;
+}
+
+.stepper .step-state {
+    display: block;
+    font-size: 0.85rem;
+}
+
+.stepper .step-done {
+    border-color: var(--success-color);
+    background-color: var(--success-bg);
+}
+
+.stepper .step-current {
+    border-color: var(--teal-primary);
+    background-color: var(--info-bg);
+    border-width: 4px;
+}
+
+.stepper .step-todo {
+    border-style: dashed;
+}
+
+.report-body {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    font-family: inherit;
+}

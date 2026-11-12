@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head th:replace="~{layout :: htmlhead('Incident Reports')}">
+    <title>Incident Reports - CaseVault</title>
+</head>
+<body>
+<a href="#main-content" class="skip-link">Skip to main content</a>
+
+<div th:replace="~{layout :: appheader}"></div>
+
+<div class="app-shell">
+    <aside th:replace="~{layout :: appsidebar('cases')}"></aside>
+
+    <main id="main-content" class="content-wrapper">
+        <div class="page-header">
+            <div>
+                <a th:href="@{/cases/{id}(id=${caseId})}" class="btn btn-secondary btn-sm mb-16">&larr; Back to case</a>
+                <h1>Incident reports</h1>
+                <p class="page-subtitle">Reports are plain text. Clients see approved reports only.</p>
+            </div>
+        </div>
+
+        <div th:if="${successMessage}" class="alert alert-success" th:text="${successMessage}" role="status" aria-live="polite"></div>
+        <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}" role="alert" aria-live="assertive"></div>
+
+        <nav class="tabs-nav" aria-label="Case Sections">
+            <a th:href="@{/cases/{id}(id=${caseId}, tab='overview')}">Overview</a>
+            <a th:href="@{/cases/{id}(id=${caseId}, tab='notes')}">Investigation Notes</a>
+            <a th:href="@{/cases/{id}(id=${caseId}, tab='actions')}">Remediation Actions</a>
+            <a th:href="@{/cases/{id}(id=${caseId}, tab='evidence')}">Evidence</a>
+            <a th:href="@{/cases/{id}/reports(id=${caseId})}" class="active" aria-current="page">Reports</a>
+        </nav>
+
+        <div th:if="${role == 'ANALYST'}" class="card">
+            <h2 class="card-title">New draft report</h2>
+            <form th:action="@{/cases/{id}/reports(id=${caseId})}" method="post">
+                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                <div class="form-group">
+                    <label for="report-body">Report text (plain text, 1 to 10000 characters)</label>
+                    <textarea id="report-body" name="body" class="form-control" rows="10" required maxlength="10000"
+                              th:text="${draftBody}"></textarea>
+                </div>
+                <p class="text-muted">The limit is 10000 characters. Line breaks and tabs are kept; other control characters are rejected.</p>
+                <button type="submit" class="btn btn-primary btn-sm">Create draft</button>
+            </form>
+        </div>
+
+        <div class="card">
+            <h2 class="card-title">Reports</h2>
+            <div th:if="${#lists.isEmpty(reports)}" class="empty-state">
+                <h3>No reports to show</h3>
+                <p th:if="${role == 'CLIENT'}">Approved reports appear here once a manager has approved them.</p>
+                <p th:if="${role != 'CLIENT'}">No report has been drafted for this case yet.</p>
+            </div>
+            <div th:if="${not #lists.isEmpty(reports)}" class="table-responsive">
+                <table class="data-table">
+                    <caption class="sr-only">Reports of this case, newest first</caption>
+                    <thead>
+                    <tr>
+                        <th scope="col">Status</th>
+                        <th scope="col">Author</th>
+                        <th scope="col">Created (UTC)</th>
+                        <th scope="col">Last change (UTC)</th>
+                        <th scope="col">Open</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr th:each="r : ${reports}">
+                        <td>
+                            <span th:if="${r.status() == 'DRAFT'}" class="status-badge status-neutral">Draft</span>
+                            <span th:if="${r.status() == 'SUBMITTED'}" class="status-badge status-warn">Submitted</span>
+                            <span th:if="${r.status() == 'APPROVED'}" class="status-badge status-ok">Approved</span>
+                        </td>
+                        <td th:text="${r.authorUsername()}">author</td>
+                        <td th:text="${r.createdAt()}">date</td>
+                        <td th:text="${r.updatedAt()}">date</td>
+                        <td><a th:href="@{/cases/{c}/reports/{r}(c=${caseId}, r=${r.id()})}" class="btn btn-secondary btn-sm">View</a></td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+</div>
+
+<div th:replace="~{layout :: appfooter}"></div>
+</body>
+</html>

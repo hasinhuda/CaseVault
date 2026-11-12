@@ -39,6 +39,12 @@
         <a th:if="${role == 'AUDITOR_ADMIN'}" th:href="@{/audit}" th:class="${activeMenu == 'audit' ? 'sidebar-link active' : 'sidebar-link'}">
             Audit log
         </a>
+        <a th:if="${role == 'AUDITOR_ADMIN'}" th:href="@{/admin/users}" th:class="${activeMenu == 'users' ? 'sidebar-link active' : 'sidebar-link'}">
+            Users
+        </a>
+        <a th:if="${role == 'AUDITOR_ADMIN'}" th:href="@{/admin/health}" th:class="${activeMenu == 'health' ? 'sidebar-link active' : 'sidebar-link'}">
+            Health
+        </a>
         <a th:if="${role == 'CLIENT'}" th:href="@{/cases/new}" th:class="${activeMenu == 'new-case' ? 'sidebar-link active' : 'sidebar-link'}">
             Report Incident
         </a>
