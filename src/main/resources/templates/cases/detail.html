@@ -41,13 +41,17 @@
             <div>
                 <nav class="tabs-nav" aria-label="Case Sections">
                     <a th:href="@{/cases/{id}(id=${caseItem.id}, tab='overview')}"
-                       th:class="${activeTab == 'overview' || activeTab == null ? 'active' : ''}">Overview</a>
+                       th:class="${activeTab == 'overview' || activeTab == null ? 'active' : ''}"
+                       th:aria-current="${activeTab == 'overview' || activeTab == null ? 'page' : null}">Overview</a>
                     <a th:href="@{/cases/{id}(id=${caseItem.id}, tab='notes')}"
-                       th:class="${activeTab == 'notes' ? 'active' : ''}">Investigation Notes (<span th:text="${#lists.size(notes)}">0</span>)</a>
+                       th:class="${activeTab == 'notes' ? 'active' : ''}"
+                       th:aria-current="${activeTab == 'notes' ? 'page' : null}">Investigation Notes (<span th:text="${#lists.size(notes)}">0</span>)</a>
                     <a th:href="@{/cases/{id}(id=${caseItem.id}, tab='actions')}"
-                       th:class="${activeTab == 'actions' ? 'active' : ''}">Remediation Actions (<span th:text="${#lists.size(actions)}">0</span>)</a>
+                       th:class="${activeTab == 'actions' ? 'active' : ''}"
+                       th:aria-current="${activeTab == 'actions' ? 'page' : null}">Remediation Actions (<span th:text="${#lists.size(actions)}">0</span>)</a>
                     <a th:href="@{/cases/{id}(id=${caseItem.id}, tab='evidence')}"
-                       th:class="${activeTab == 'evidence' ? 'active' : ''}">Evidence (<span th:text="${#lists.size(evidence)}">0</span>)</a>
+                       th:class="${activeTab == 'evidence' ? 'active' : ''}"
+                       th:aria-current="${activeTab == 'evidence' ? 'page' : null}">Evidence (<span th:text="${#lists.size(evidence)}">0</span>)</a>
                     <a th:if="${role != 'AUDITOR_ADMIN'}" th:href="@{/cases/{id}/reports(id=${caseItem.id})}">Reports</a>
                 </nav>
 
@@ -147,13 +151,13 @@
                                     <form th:if="${canAddActions}" th:action="@{/cases/{id}/actions/{actionId}/status(id=${caseItem.id}, actionId=${a.id})}" method="post" class="mt-16">
                                         <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
                                         <div class="form-inline">
-                                            <label th:for="'action-status-' + ${a.id}" class="skip-link">Update Status</label>
+                                            <label th:for="'action-status-' + ${a.id}" class="sr-only" th:text="'Status of action: ' + ${a.description}">Update Status</label>
                                             <select th:id="'action-status-' + ${a.id}" name="status" class="form-control status-select-sm">
                                                 <option value="OPEN" th:selected="${a.status == 'OPEN'}">OPEN</option>
                                                 <option value="IN_PROGRESS" th:selected="${a.status == 'IN_PROGRESS'}">IN_PROGRESS</option>
                                                 <option value="COMPLETED" th:selected="${a.status == 'COMPLETED'}">COMPLETED</option>
                                             </select>
-                                            <button type="submit" class="btn btn-secondary btn-sm">Update</button>
+                                            <button type="submit" th:aria-label="'Update status of action: ' + ${a.description}" class="btn btn-secondary btn-sm">Update</button>
                                         </div>
                                     </form>
                                 </div>
@@ -191,7 +195,7 @@
                                         <span> · </span><span th:text="${item.createdAt}">date</span>
                                     </div>
                                 </div>
-                                <a class="btn btn-secondary btn-sm" th:href="@{/cases/{caseId}/evidence/{evidenceId}(caseId=${caseItem.id}, evidenceId=${item.id})}">Download</a>
+                                <a class="btn btn-secondary btn-sm" th:aria-label="'Download evidence ' + ${item.originalName}" th:href="@{/cases/{caseId}/evidence/{evidenceId}(caseId=${caseItem.id}, evidenceId=${item.id})}">Download</a>
                             </div>
                         </div>
                     </div>

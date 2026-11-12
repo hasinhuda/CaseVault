@@ -6,8 +6,8 @@
      - White: #FFFFFF
      - Teal Accent: #0E7C86
      - Danger: #C0392B
-     - Warning: #D68910
-     - Success: #1E8449
+     - Warning: #9A6200 (text on pale amber, 4.83:1)
+     - Success: #196F3D (text on pale green, 5.75:1)
 */
 
 :root {
@@ -22,11 +22,14 @@
     --text-muted: #64748B;
     --text-light: #F8FAFC;
     --border-color: #E2E8F0;
+    --border-control: #7B8798;
+    --border-control-hover: #5B6B80;
+    --focus-ring: #0E7C86;
     --danger-color: #C0392B;
     --danger-bg: #FDEDEC;
-    --warning-color: #D68910;
+    --warning-color: #9A6200;
     --warning-bg: #FEF9E7;
-    --success-color: #1E8449;
+    --success-color: #196F3D;
     --success-bg: #EAFAF1;
     --info-color: #0E7C86;
     --info-bg: #E8F8F5;
@@ -68,6 +71,13 @@ body {
 
 a:focus, button:focus, input:focus, select:focus, textarea:focus {
     outline: 2px solid var(--teal-primary);
+    outline-offset: 2px;
+}
+
+/* Phase 9C: keyboard focus ring, 3px. Teal is 4.95:1 on white and 3.49:1 on the dark navy header and sidebar (>= 3:1). */
+a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible,
+.skip-link:focus-visible {
+    outline: 3px solid var(--focus-ring);
     outline-offset: 2px;
 }
 
@@ -236,12 +246,12 @@ main.main-content {
 .btn-secondary {
     background-color: #FFFFFF;
     color: var(--text-primary);
-    border-color: var(--border-color);
+    border-color: var(--border-control);
 }
 
 .btn-secondary:hover {
     background-color: #F8FAFC;
-    border-color: #CBD5E1;
+    border-color: var(--border-control-hover);
 }
 
 .btn-danger {
@@ -278,7 +288,7 @@ main.main-content {
 .form-control {
     width: 100%;
     padding: 8px 12px;
-    border: 1px solid var(--border-color);
+    border: 1px solid var(--border-control);
     border-radius: 6px;
     font-size: 0.95rem;
     background-color: #FFFFFF;
@@ -422,8 +432,9 @@ table.data-table tbody tr:hover {
     color: var(--text-secondary);
 }
 
-.empty-state h3 {
+.empty-state h2, .empty-state h3 {
     color: var(--navy-header);
+    font-size: 1.17rem;
     margin-bottom: 8px;
 }
 
@@ -634,7 +645,7 @@ footer.app-footer {
 
 .filter-item input, .filter-item select {
     padding: 6px 10px;
-    border: 1px solid var(--border-color);
+    border: 1px solid var(--border-control);
     border-radius: 4px;
     font-size: 0.9rem;
 }

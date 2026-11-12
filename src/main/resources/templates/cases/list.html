@@ -79,6 +79,7 @@
         <div class="card">
             <div th:if="${casesPage.totalElements > 0}" class="table-responsive">
                 <table class="data-table">
+                    <caption class="sr-only">Incident cases matching the current filters</caption>
                     <thead>
                     <tr>
                         <th scope="col">Title</th>
@@ -112,7 +113,7 @@
                         <td th:text="${c.assignedAnalystUsername != null ? c.assignedAnalystUsername : 'Unassigned'}">Unassigned</td>
                         <td th:text="${c.createdAt}">Date</td>
                         <td>
-                            <a th:href="@{/cases/{id}(id=${c.id})}" class="btn btn-secondary btn-sm">View</a>
+                            <a th:href="@{/cases/{id}(id=${c.id})}" th:aria-label="'View case ' + ${c.title}" class="btn btn-secondary btn-sm">View</a>
                         </td>
                     </tr>
                     </tbody>
@@ -134,7 +135,7 @@
 
             <!-- Empty State -->
             <div th:if="${casesPage.totalElements == 0}" class="empty-state">
-                <h3>No incident cases found</h3>
+                <h2>No incident cases found</h2>
                 <p>No cases match your search criteria or permission scope.</p>
                 <div th:if="${role == 'CLIENT'}" class="mt-16">
                     <a th:href="@{/cases/new}" class="btn btn-primary">Report an Incident</a>

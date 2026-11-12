@@ -226,3 +226,34 @@ Severity order inside each group: security-relevant, accessibility, consistency.
 | B3 label | Section 4: "Quarantined" vs "Restricted" | One wording, "Cases (Restricted)", in `layout.html` and `dashboard.html` (reason: it states the rule plainly; "Quarantined" suggests infected or isolated data) | UI-NAV-01 (`UiConsistencyTest`), UI-DASH-05 |
 
 Not done in 9B (still open in section 8): dead CSS removal, `.badge-role` scope, contrast fixes, ARIA, focus, shared dashboard shell. New observation: F-010 (`;jsessionid` in links of the signed-out CSRF error page), not fixed, owner decision needed.
+
+## 11. Phase 9C result (DRAFT)
+
+Accessibility only: no status code, authorisation rule, audit behaviour, header, cookie flag or form field/action changed. Tests are listed by ID; the finding is F-011 (`docs/assurance/findings-log.md`).
+
+| Item | Inventory finding | Change | Test |
+|---|---|---|---|
+| C1 contrast | Section 5.4 (success 4.37, HIGH/PENDING_REVIEW 2.68, control borders 1.23) | `--success-color`, `--warning-color` darkened; new `--border-control`, `--border-control-hover` used for inputs, filter inputs and the secondary button | UI-A11Y-CONTRAST-01, -02 |
+| C2 focus | Section 5.3 (no `:focus-visible`) | 3px `:focus-visible` ring (`--focus-ring`, teal) for links, buttons, inputs, selects, textareas, skip link; the older `:focus` rule is kept; no `outline: none` anywhere | UI-A11Y-FOCUS-01 |
+| C2 skip link | Section 5.1 | Every skip link target exists; `login.html` target is now a `<main>` | UI-A11Y-STRUCT-01 |
+| C3 landmarks and headings | Section 5.1 (login without `main`; h1 to h3 in two empty states) | `login.html` uses `<main id="login-main">`; empty states of the cases list and users list are `h2` | UI-A11Y-STRUCT-01, -02 |
+| C3 table caption | Section 5.2 (cases table) | `<caption class="sr-only">` added to the cases table; all tables have captions and `th scope` | UI-A11Y-STRUCT-03 |
+| C3 hidden label | Section 5.2 (`skip-link` class on a label) | the label uses `sr-only` and names the action | UI-A11Y-STRUCT-01, -04 |
+| C3 `aria-current` | Section 5.1 | sidebar links, dashboard header link and case tabs mark the current page | UI-A11Y-NAV-01, -02 |
+| C3 repeated actions | Section 5.2 | `th:aria-label` on View, Disable, Enable, Revoke sessions, Update (action status) and Download evidence | UI-A11Y-ACTIONS-01 |
+| C3 labels, alerts | Section 5.2 | all controls already had labels (checked); error alerts use `role="alert"`, success `role="status"`; the audit "busy" notice got `role="status"` | UI-A11Y-STRUCT-04 |
+
+Final contrast table (formula in `UiA11yContrastTest`: L = 0.2126 R + 0.7152 G + 0.0722 B with linearised channels, ratio = (L1 + 0.05) / (L2 + 0.05)):
+
+| Pair | Before | After | Needs |
+|---|---|---|---|
+| Success alert, LOW and CLOSED badges: text on `#EAFAF1` | `#1E8449` 4.37 | `#196F3D` 5.75 | 4.5 |
+| HIGH and PENDING_REVIEW badges: text on `#FEF9E7` | `#D68910` 2.68 | `#9A6200` 4.83 | 4.5 |
+| Text input and filter input border on white | `#E2E8F0` 1.23 | `#7B8798` 3.65 | 3.0 |
+| Secondary button border on white | `#E2E8F0` 1.23 | `#7B8798` 3.65 | 3.0 |
+| Secondary button hover border on `#F8FAFC` | `#CBD5E1` 1.42 | `#5B6B80` 5.20 | 3.0 |
+| Focus ring on page / on navy header and sidebar | 4.57 / 3.49 (teal, 2px) | 4.57 / 3.49 (teal, 3px) | 3.0 |
+
+All other pairs (more than 60 in the test) are unchanged and pass. Variables changed also feed `status-ok`/`status-warn` borders and the report stepper; those are non-text borders and stay above 3:1.
+
+Not done in 9C (by design): merging the dashboard into the layout fragments, a single flash fragment, `aria-describedby` for field errors (the templates show no per-field errors, only one banner), `tabindex="-1"` on `<main>`, date formats, badge unification. Needs a real browser: VERIFY MANUALLY (focus ring on every background, 200 percent zoom, narrow width, screen reader output).

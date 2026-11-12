@@ -27,25 +27,31 @@
 <aside th:fragment="appsidebar(activeMenu)" class="app-sidebar" aria-label="Sidebar Navigation">
     <div class="sidebar-heading">Navigation</div>
     <nav>
-        <a th:href="@{/dashboard}" th:class="${activeMenu == 'dashboard' ? 'sidebar-link active' : 'sidebar-link'}">
+        <a th:href="@{/dashboard}" th:class="${activeMenu == 'dashboard' ? 'sidebar-link active' : 'sidebar-link'}"
+           th:aria-current="${activeMenu == 'dashboard' ? 'page' : null}">
             Dashboard
         </a>
-        <a th:if="${role != 'AUDITOR_ADMIN'}" th:href="@{/cases}" th:class="${activeMenu == 'cases' ? 'sidebar-link active' : 'sidebar-link'}">
+        <a th:if="${role != 'AUDITOR_ADMIN'}" th:href="@{/cases}" th:class="${activeMenu == 'cases' ? 'sidebar-link active' : 'sidebar-link'}"
+           th:aria-current="${activeMenu == 'cases' ? 'page' : null}">
             Cases
         </a>
         <span th:if="${role == 'AUDITOR_ADMIN'}" class="sidebar-restricted-tag" aria-disabled="true">
             Cases (Restricted)
         </span>
-        <a th:if="${role == 'AUDITOR_ADMIN'}" th:href="@{/audit}" th:class="${activeMenu == 'audit' ? 'sidebar-link active' : 'sidebar-link'}">
+        <a th:if="${role == 'AUDITOR_ADMIN'}" th:href="@{/audit}" th:class="${activeMenu == 'audit' ? 'sidebar-link active' : 'sidebar-link'}"
+           th:aria-current="${activeMenu == 'audit' ? 'page' : null}">
             Audit log
         </a>
-        <a th:if="${role == 'AUDITOR_ADMIN'}" th:href="@{/admin/users}" th:class="${activeMenu == 'users' ? 'sidebar-link active' : 'sidebar-link'}">
+        <a th:if="${role == 'AUDITOR_ADMIN'}" th:href="@{/admin/users}" th:class="${activeMenu == 'users' ? 'sidebar-link active' : 'sidebar-link'}"
+           th:aria-current="${activeMenu == 'users' ? 'page' : null}">
             Users
         </a>
-        <a th:if="${role == 'AUDITOR_ADMIN'}" th:href="@{/admin/health}" th:class="${activeMenu == 'health' ? 'sidebar-link active' : 'sidebar-link'}">
+        <a th:if="${role == 'AUDITOR_ADMIN'}" th:href="@{/admin/health}" th:class="${activeMenu == 'health' ? 'sidebar-link active' : 'sidebar-link'}"
+           th:aria-current="${activeMenu == 'health' ? 'page' : null}">
             Health
         </a>
-        <a th:if="${role == 'CLIENT'}" th:href="@{/cases/new}" th:class="${activeMenu == 'new-case' ? 'sidebar-link active' : 'sidebar-link'}">
+        <a th:if="${role == 'CLIENT'}" th:href="@{/cases/new}" th:class="${activeMenu == 'new-case' ? 'sidebar-link active' : 'sidebar-link'}"
+           th:aria-current="${activeMenu == 'new-case' ? 'page' : null}">
             Report Incident
         </a>
     </nav>
