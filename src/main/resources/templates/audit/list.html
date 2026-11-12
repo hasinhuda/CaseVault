@@ -38,7 +38,7 @@
                     <span class="text-muted"
                           th:text="${audit.verification().eventsVerified()} + ' events verified before the break, checked at ' + ${audit.verification().checkedAt()}">details</span>
                 </p>
-                <p th:if="${verifyBusy}" class="alert alert-info" th:text="${verifyBusy}">Busy</p>
+                <p th:if="${verifyBusy}" class="alert alert-info" role="status" th:text="${verifyBusy}">Busy</p>
             </div>
             <p th:if="${audit.head() != null}">
                 Head: sequence <strong th:text="${audit.head().sequenceNo()}">0</strong>,

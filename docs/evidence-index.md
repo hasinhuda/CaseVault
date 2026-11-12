@@ -244,3 +244,12 @@ All Phase 5 evidence requirements (Groups A through G) verified. Phase 6 cryptog
 | Requirement ID | Description | Source / Config | Automated Test / Gate | CI Verification | Status |
 |---|---|---|---|---|---|
 | SEC-SESSURL (F-010) | The session id travels in the cookie only; no `;jsessionid` in any body, link, form action or redirect target; cookie flags unchanged | [application.properties](../src/main/resources/application.properties) (`server.servlet.session.tracking-modes=cookie`) | SEC-SESSURL-01..04 (`SessionIdInUrlHttpTest`, real HTTP); exact-link assertions in UI-ERR-01..05 | CI `build-test-coverage` | Verified locally; browser check VERIFY MANUALLY |
+
+## Phase 9C: accessibility (DRAFT)
+
+| Requirement ID | Description | Source / Config | Automated Test / Gate | CI Verification | Status |
+|---|---|---|---|---|---|
+| UI-A11Y-CONTRAST (F-011) | Text, badge, alert, button and control-boundary colours meet WCAG AA; pairs are read from the stylesheet | [app.css](../src/main/resources/static/css/app.css) | UI-A11Y-CONTRAST-01..02 (`UiA11yContrastTest`) | CI `build-test-coverage` | Verified locally; browser check VERIFY MANUALLY |
+| UI-A11Y-FOCUS (F-011) | `:focus-visible` ring for all interactive elements; no outline removed | [app.css](../src/main/resources/static/css/app.css) | UI-A11Y-FOCUS-01 | CI `build-test-coverage` | Verified locally |
+| UI-A11Y-STRUCT (F-011) | lang, title, one h1, main, no heading skips, table captions and th scope, labelled controls, skip link targets | [templates](../src/main/resources/templates) | UI-A11Y-STRUCT-01..04 (`UiA11yStructureTest`) | CI `build-test-coverage` | Verified locally |
+| UI-A11Y-NAV (F-011) | `aria-current` on the active navigation link per role, distinct accessible names for repeated row actions | [layout.html](../src/main/resources/templates/layout.html), [users.html](../src/main/resources/templates/admin/users.html), [list.html](../src/main/resources/templates/cases/list.html) | UI-A11Y-NAV-01..02, UI-A11Y-ACTIONS-01 (`UiA11yRenderedTest`) | CI `build-test-coverage` | Verified locally; screen reader VERIFY MANUALLY |

@@ -15,7 +15,7 @@
         <span class="env-tag">Secure IR</span>
     </div>
     <nav class="nav-links" aria-label="Main Navigation">
-        <a th:href="@{/dashboard}" class="active">Dashboard</a>
+        <a th:href="@{/dashboard}" class="active" aria-current="page">Dashboard</a>
         <a th:if="${role != 'AUDITOR_ADMIN'}" th:href="@{/cases}">Cases</a>
         <span th:if="${role == 'AUDITOR_ADMIN'}" class="layout-header-org" aria-disabled="true">Cases (Restricted)</span>
         <a th:if="${role == 'AUDITOR_ADMIN'}" th:href="@{/audit}">Audit log</a>

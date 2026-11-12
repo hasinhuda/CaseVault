@@ -50,14 +50,15 @@
                         <td th:text="${u.statusChangedAt() != null ? u.statusChangedAt() : 'Never changed'}">Never changed</td>
                         <td>
                             <a th:if="${u.enabled()}" th:href="@{/admin/users/{id}/disable-confirm(id=${u.id()})}"
+                               th:aria-label="'Disable user ' + ${u.username()}"
                                class="btn btn-danger btn-sm">Disable</a>
                             <form th:if="${!u.enabled()}" th:action="@{/admin/users/{id}/enable(id=${u.id()})}" method="post" class="form-inline">
                                 <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
-                                <button type="submit" class="btn btn-secondary btn-sm">Enable</button>
+                                <button type="submit" th:aria-label="'Enable user ' + ${u.username()}" class="btn btn-secondary btn-sm">Enable</button>
                             </form>
                             <form th:action="@{/admin/users/{id}/revoke-sessions(id=${u.id()})}" method="post" class="form-inline">
                                 <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
-                                <button type="submit" class="btn btn-secondary btn-sm">Revoke sessions</button>
+                                <button type="submit" th:aria-label="'Revoke sessions of user ' + ${u.username()}" class="btn btn-secondary btn-sm">Revoke sessions</button>
                             </form>
                         </td>
                     </tr>
@@ -74,7 +75,7 @@
                 </div>
             </div>
             <div th:if="${users.rows().isEmpty()}" class="empty-state">
-                <h3>No users on this page</h3>
+                <h2>No users on this page</h2>
                 <a th:href="@{/admin/users}" class="btn btn-secondary btn-sm">Show the first page</a>
             </div>
         </div>
