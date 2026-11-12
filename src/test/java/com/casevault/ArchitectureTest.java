@@ -100,6 +100,27 @@ class ArchitectureTest {
             .because("controllers reach the audit log only through AuditQueryService (Phase 6C); the append path is the AuditAppender interface");
 
     @ArchTest
+    static final ArchRule controllersMustNotTouchReportRepository = noClasses()
+            .that().resideInAPackage("..controller..")
+            .should().dependOnClassesThat().haveSimpleName("ReportRepository")
+            .as("SEC-REPORT-ARCH-01: Controllers cannot touch the report repository")
+            .because("report access rules (tenant, role, state, four-eyes) live in the service layer");
+
+    @ArchTest
+    static final ArchRule reportRepositoryOnlyAccessedByServices = classes()
+            .that().haveSimpleName("ReportRepository")
+            .should().onlyBeAccessed().byAnyPackage("..service..")
+            .as("SEC-REPORT-ARCH-02: ReportRepository is accessed only by service classes")
+            .because("every report read and write must pass the report service checks");
+
+    @ArchTest
+    static final ArchRule controllersMustNotBypassReportRules = noClasses()
+            .that().resideInAPackage("..controller..")
+            .should().dependOnClassesThat().haveSimpleName("DefaultReportService")
+            .as("SEC-REPORT-ARCH-03: Controllers use the ReportService interface, never the implementation")
+            .because("the interface is the single entry point of the report workflow");
+
+    @ArchTest
     static final ArchRule controllersMustNotAccessEvidenceRepositoryOrStorage = noClasses()
             .that().resideInAPackage("..controller..")
             .should().dependOnClassesThat().haveNameMatching(".*(EvidenceRepository|EvidenceStorageService|EvidenceStore).*")

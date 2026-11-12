@@ -143,3 +143,16 @@ All Phase 5 evidence requirements (Groups A through G) verified. Phase 6 cryptog
 | SR-13-UI | Chain verification on demand: badge, one run at a time, AUDIT_CHAIN_VERIFIED event, CSRF on POST | [AuditQueryService.java](../src/main/java/com/casevault/service/AuditQueryService.java) | SEC-AUDIT-UI-01, -04, -11, -12, -13 | CI `build-test-coverage` | Verified |
 | SR-08-UI | Audit template: th:text only, no inline script/style/handler, CSP unchanged | [audit/list.html](../src/main/resources/templates/audit/list.html) | SEC-AUDIT-UI-14, SEC-CASE-13, SEC-EVID-UI-04 | CI `build-test-coverage` | Verified |
 | ARCH-AUDIT-07 | Only AuditQueryService reads the audit log through AuditLogReader | [ArchitectureTest.java](../src/test/java/com/casevault/ArchitectureTest.java) | SEC-AUDIT-ARCH-07 | CI `build-test-coverage` | Verified |
+
+## Phase 7A: Reports Backend (DRAFT)
+
+| Requirement ID | Description | Source / Config | Automated Test / Gate | CI Verification | Status |
+|---|---|---|---|---|---|
+| FR-11 | Analyst drafts reports linked to a case; unapproved drafts hidden from clients (service layer only, no endpoint yet) | [DefaultReportService.java](../src/main/java/com/casevault/service/DefaultReportService.java), [V8__reports.sql](../src/main/resources/db/migration/V8__reports.sql) | SEC-REPORT-AUTHZ-01, SEC-REPORT-03, SEC-REPORT-05 | CI `build-test-coverage` | Verified at service level; HTTP and UI in 7C |
+| FR-12 / SR-06 | Four-eyes: the author cannot approve; a different manager can | [DefaultReportService.java](../src/main/java/com/casevault/service/DefaultReportService.java) | SEC-REPORT-01, SEC-REPORT-02 | CI `build-test-coverage` | Verified at service level |
+| SR-02 (reports) | Cross-tenant, unauthorised and wrong-case report access is 404; auditor gets 404 | [DefaultReportService.java](../src/main/java/com/casevault/service/DefaultReportService.java) | SEC-REPORT-AUTHZ-01, SEC-REPORT-03, SEC-REPORT-04 | CI `build-test-coverage` | Verified at service level |
+| REPORT-BODY | Plain-text body, length and control-character limits, no mass assignment | [ADR 0006](adr/0006-report-workflow-plain-text.md), [ReportRequestDto.java](../src/main/java/com/casevault/dto/ReportRequestDto.java) | SEC-REPORT-05, SEC-REPORT-07 | CI `build-test-coverage` | Verified (output escaping is tested in 7C) |
+| FR-13 (reports) | REPORT_TRANSITION wired: one event per transition, actor and case id, no body | [DefaultReportService.java](../src/main/java/com/casevault/service/DefaultReportService.java) | SEC-REPORT-08, SEC-REPORT-09 | CI `build-test-coverage` | Verified |
+| DB-REPORTS | Flyway V8 on H2 and real PostgreSQL | [V8__reports.sql](../src/main/resources/db/migration/V8__reports.sql) | SEC-DB-001 ([PostgresFlywayMigrationTest.java](../src/test/java/com/casevault/db/PostgresFlywayMigrationTest.java)) | CI `build-test-coverage` | Verified |
+| ARCH-REPORT | Controllers cannot reach the report repository or implementation | [ArchitectureTest.java](../src/test/java/com/casevault/ArchitectureTest.java) | SEC-REPORT-ARCH-01, -02, -03 | CI `build-test-coverage` | Verified |
+| TEST-REPORT-DOC | Report attack-to-test table | [report-tests.md](assurance/report-tests.md) | n/a | n/a | Documentation |

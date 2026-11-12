@@ -68,6 +68,9 @@ public class AuthorisationOperationMatrixTest {
     @Autowired
     private ObjectMapper objectMapper;
 
+    @Autowired
+    private com.casevault.repository.ReportRepository reportRepository;
+
     private Organisation orgInternal;
     private Organisation orgA;
     private Organisation orgB;
@@ -88,6 +91,7 @@ public class AuthorisationOperationMatrixTest {
 
     @BeforeEach
     void setUp() {
+        reportRepository.deleteAll();
         remediationActionRepository.deleteAll();
         caseNoteRepository.deleteAll();
         evidenceRepository.deleteAll();
@@ -782,5 +786,77 @@ public class AuthorisationOperationMatrixTest {
                 com.casevault.exception.ResourceNotFoundException.class,
                 () -> service.uploadEvidence(caseA1AssignedToBob.getId(), file, principalFor(auditorUser))
         );
+    }
+
+    // ---- Phase 7A: report role x operation matrix (ADDED; no existing test changed) ----
+
+    private com.casevault.service.DefaultReportService reportService() {
+        return new com.casevault.service.DefaultReportService(reportRepository, caseRepository, userRepository,
+                new com.casevault.security.AccessPolicy(), new com.casevault.service.LoggingAuditEventRecorder());
+    }
+
+    private void assertReportNotFound(org.junit.jupiter.api.function.Executable call, String what) {
+        org.junit.jupiter.api.Assertions.assertThrows(com.casevault.exception.ResourceNotFoundException.class, call, what);
+    }
+
+    @Test
+    @DisplayName("SEC-REPORT-AUTHZ-01: role x operation matrix for report create, update, submit, approve, list and get (404, never 403)")
+    void reportRoleOperationMatrix() {
+        com.casevault.service.DefaultReportService svc = reportService();
+        Instant now = Instant.now();
+        User analystEve = createUser("analyst_eve_" + UUID.randomUUID().toString().substring(0, 8), orgInternal, Role.ANALYST, now);
+        String caseId = caseA1AssignedToBob.getId();
+        com.casevault.dto.ReportRequestDto body = new com.casevault.dto.ReportRequestDto("Matrix report body");
+
+        // create: only the assigned analyst
+        for (User denied : new User[]{analystEve, managerAlice, clientManagerA, clientUserA, clientUserB, auditorUser}) {
+            assertReportNotFound(() -> svc.createDraft(caseId, body, principalFor(denied)), "create by " + denied.getRole());
+        }
+        assertReportNotFound(() -> svc.createDraft(caseA2Unassigned.getId(), body, principalFor(analystBob)), "create on unassigned case");
+        com.casevault.dto.ReportResponseDto draft = svc.createDraft(caseId, body, principalFor(analystBob));
+        assertEquals("DRAFT", draft.status());
+        String reportId = draft.id();
+
+        // get/list of a DRAFT: analyst (assigned) and managers in scope only
+        for (User allowed : new User[]{analystBob, managerAlice, clientManagerA}) {
+            assertEquals(reportId, svc.get(caseId, reportId, principalFor(allowed)).id());
+            assertEquals(1, svc.list(caseId, principalFor(allowed)).size());
+        }
+        for (User denied : new User[]{clientUserA, analystEve, clientUserB, auditorUser}) {
+            assertReportNotFound(() -> svc.get(caseId, reportId, principalFor(denied)), "get draft by " + denied.getRole());
+        }
+        assertEquals(0, svc.list(caseId, principalFor(clientUserA)).size(), "client list hides drafts");
+        for (User denied : new User[]{clientUserB, analystEve, auditorUser}) {
+            assertReportNotFound(() -> svc.list(caseId, principalFor(denied)), "list by " + denied.getRole());
+        }
+
+        // update: author only
+        for (User denied : new User[]{analystEve, managerAlice, clientManagerA, clientUserA, clientUserB, auditorUser}) {
+            assertReportNotFound(() -> svc.updateDraft(caseId, reportId, body, principalFor(denied)), "update by " + denied.getRole());
+        }
+        assertEquals("DRAFT", svc.updateDraft(caseId, reportId, new com.casevault.dto.ReportRequestDto("Edited"), principalFor(analystBob)).status());
+
+        // submit: author only
+        for (User denied : new User[]{analystEve, managerAlice, clientManagerA, clientUserA, clientUserB, auditorUser}) {
+            assertReportNotFound(() -> svc.submit(caseId, reportId, principalFor(denied)), "submit by " + denied.getRole());
+        }
+        assertEquals("SUBMITTED", svc.submit(caseId, reportId, principalFor(analystBob)).status());
+
+        // approve: managers who can see the case only
+        for (User denied : new User[]{analystBob, analystEve, clientUserA, clientUserB, auditorUser}) {
+            assertReportNotFound(() -> svc.approve(caseId, reportId, principalFor(denied)), "approve by " + denied.getRole());
+        }
+        // a MANAGER of another organisation cannot see the case (client-org manager of org A on case B1)
+        assertReportNotFound(() -> svc.approve(caseB1.getId(), reportId, principalFor(clientManagerA)), "manager of other org");
+        com.casevault.dto.ReportResponseDto approved = svc.approve(caseId, reportId, principalFor(managerAlice));
+        assertEquals("APPROVED", approved.status());
+        assertEquals(managerAlice.getId(), approved.approvedById());
+
+        // after approval the CLIENT of the case organisation sees it; other tenants and the auditor still do not
+        assertEquals(reportId, svc.get(caseId, reportId, principalFor(clientUserA)).id());
+        assertEquals(1, svc.list(caseId, principalFor(clientUserA)).size());
+        assertReportNotFound(() -> svc.get(caseId, reportId, principalFor(clientUserB)), "other tenant");
+        assertReportNotFound(() -> svc.get(caseId, reportId, principalFor(auditorUser)), "auditor");
+        assertReportNotFound(() -> svc.list(caseId, principalFor(auditorUser)), "auditor list");
     }
 }

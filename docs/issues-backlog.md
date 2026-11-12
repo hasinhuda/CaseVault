@@ -65,3 +65,14 @@ This backlog tracks identified technical debt, deferred security enhancements, a
 - Audit pages need `Cache-Control: no-store` (Phase 8).
 - Contrast ratio and keyboard behaviour of the new page were not measured with a tool: VERIFY MANUALLY.
 - The auditor dashboard card still contains static text ("Audit Log Integrity: ACTIVE") that is not computed from a verification; replace it with the real status.
+
+## Phase 7A reports backlog (DRAFT)
+
+- No reject or return-to-draft step: a SUBMITTED report can only be approved; a manager cannot send it back.
+- No report versioning or history: an edit replaces the body, and the earlier text is lost.
+- HTTP endpoints and UI come in 7C, so end-to-end HTTP tests for reports (status codes, CSRF, output escaping of a body such as a script tag) are still missing.
+- Client download or export of approved reports is not built.
+- Two managers approving the same report at the same moment: no optimistic locking or version column; the second call sees APPROVED and gets 400 only if it runs after the first commit.
+- Unicode bidirectional and other invisible formatting characters are accepted in report bodies.
+- Report body edits (drafts) are not audited; only create, submit and approve are.
+- Approval of a submitted report on a CLOSED case is allowed by assumption; confirm with the product owner.

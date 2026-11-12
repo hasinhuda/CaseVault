@@ -143,3 +143,5 @@ Pages: `GET /audit` (paged list) and `POST /audit/verify` (verify, then redirect
 - The verification status is in memory only: lost on restart and not shared between nodes.
 - Audit pages do not yet send `Cache-Control: no-store` (Phase 8).
 - Viewing the list is not audited. The page shows ids only, so mapping an id to a person needs another function that does not exist yet.
+
+2026-11-12 (Phase 7A): `REPORT_TRANSITION` is now wired. `DefaultReportService` records one event per create, submit and approve (reasons `REPORT_CREATED`, `REPORT_SUBMITTED`, `REPORT_APPROVED`) through the 6B recorder, never with the report body (tests SEC-REPORT-08, SEC-REPORT-09). `ADMIN_ACCOUNT_DISABLED` and `ADMIN_SESSION_REVOKED` are still not wired.

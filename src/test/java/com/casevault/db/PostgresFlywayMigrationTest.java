@@ -68,7 +68,7 @@ public class PostgresFlywayMigrationTest {
         assertNotNull(flyway, "Flyway bean must be configured");
 
         MigrationInfo[] applied = flyway.info().applied();
-        assertEquals(7, applied.length, "V1-V6 and the PostgreSQL-only V7 migrations must be applied to PostgreSQL");
+        assertEquals(8, applied.length, "V1-V6, the PostgreSQL-only V7 and the Phase 7 V8 migrations must be applied to PostgreSQL");
 
         assertEquals("1", applied[0].getVersion().getVersion());
         assertEquals("baseline", applied[0].getDescription());
@@ -98,6 +98,11 @@ public class PostgresFlywayMigrationTest {
         assertEquals("7", applied[6].getVersion().getVersion());
         assertEquals("audit events immutable", applied[6].getDescription());
         assertEquals(MigrationState.SUCCESS, applied[6].getState());
+
+        // Phase 7A: V8 reports (all databases).
+        assertEquals("8", applied[7].getVersion().getVersion());
+        assertEquals("reports", applied[7].getDescription());
+        assertEquals(MigrationState.SUCCESS, applied[7].getState());
     }
 
     @Test
