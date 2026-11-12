@@ -27,7 +27,7 @@ import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter;
-import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
+import org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher;
 import org.springframework.security.web.util.matcher.MediaTypeRequestMatcher;
 import org.springframework.security.web.util.matcher.RequestMatcher;
 
@@ -64,9 +64,10 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http, SessionRegistry sessionRegistry,
                                                    com.casevault.ratelimit.RateLimitFilter rateLimitFilter,
-                                                   @org.springframework.beans.factory.annotation.Value("${casevault.security.hsts-enabled:false}") boolean hstsEnabled) throws Exception {
+                                                   @org.springframework.beans.factory.annotation.Value("${casevault.security.hsts-enabled:false}") boolean hstsEnabled,
+                                                   @org.springframework.beans.factory.annotation.Value("${casevault.session.max-per-user:3}") int maxSessionsPerUser) throws Exception {
         LinkedHashMap<RequestMatcher, AuthenticationEntryPoint> entryPoints = new LinkedHashMap<>();
-        entryPoints.put(AntPathRequestMatcher.antMatcher("/api/**"), new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED));
+        entryPoints.put(PathPatternRequestMatcher.withDefaults().matcher("/api/**"), new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED));
         entryPoints.put(new MediaTypeRequestMatcher(MediaType.APPLICATION_JSON), new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED));
 
         DelegatingAuthenticationEntryPoint delegatingEntryPoint = new DelegatingAuthenticationEntryPoint(entryPoints);
@@ -136,10 +137,12 @@ public class SecurityConfig {
             .sessionManagement(session -> session
                 .sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED)
                 .sessionFixation(fixation -> fixation.changeSessionId())
-                // Unlimited sessions per user, but every session is registered so an admin can expire them
-                // (Phase 7B revoke-sessions). The expired session is refused on its next request.
+                // Phase 8C: at most casevault.session.max-per-user (default 3) concurrent sessions per user. The
+                // OLDEST session is expired when the cap is exceeded (the new login wins). Every session is also
+                // registered so an admin can expire them (Phase 7B revoke-sessions). An expired session is refused
+                // on its next request.
                 .sessionConcurrency(concurrency -> concurrency
-                    .maximumSessions(-1)
+                    .maximumSessions(maxSessionsPerUser)
                     .sessionRegistry(sessionRegistry)
                     .expiredSessionStrategy(event -> {
                         jakarta.servlet.http.HttpServletRequest request = event.getRequest();

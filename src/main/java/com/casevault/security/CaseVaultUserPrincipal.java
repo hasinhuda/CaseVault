@@ -84,5 +84,18 @@ public class CaseVaultUserPrincipal implements UserDetails {
     public boolean isEnabled() {
         return enabled;
     }
-}
 
+    /**
+     * Identity is the user id. Spring Security's session registry keys sessions by principal, so without value
+     * equality every login would look like a different user and the concurrent session cap could never count.
+     */
+    @Override
+    public boolean equals(Object other) {
+        return other instanceof CaseVaultUserPrincipal that && java.util.Objects.equals(userId, that.userId);
+    }
+
+    @Override
+    public int hashCode() {
+        return java.util.Objects.hashCode(userId);
+    }
+}

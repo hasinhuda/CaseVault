@@ -141,6 +141,7 @@ The system supports four distinct operational roles with strict separation of du
 - **Rationale**: Eliminates tenant enumeration and resource existence disclosure via response status differentiation (BOLA/IDOR defense).
 - **Verification Method**: Automated cross-tenant tests requesting foreign UUIDs asserting that HTTP 404 is uniformly returned.
 - **Standards Mapping**: CWE-200, CWE-284, CWE-639, OWASP Top 10:2025 A01 [VERIFY MANUALLY] / A01:2021, ASVS 5.0 V4.1 [VERIFY MANUALLY].
+- **Clarification (Phase 8C, decision F-003 by the project owner; the text above is unchanged)**: "Unauthorized" in this requirement means an object the caller cannot see (another organisation, or a role without access to the object): that always returns HTTP `404`. A forbidden action on an object the caller CAN see (for example a client adding a note to their own case, or a non-manager assigning an analyst) returns HTTP `403`. Both cases write exactly one `ACCESS_DENIED` audit event. Tests: SEC-HDR-404-01..03, SEC-AUTHZ-10, SEC-AUDIT-WIRE-08.
 
 ### SR-03: Argon2id Password Hashing
 - **Description**: Passwords must be hashed using Argon2id via Spring Security `Argon2PasswordEncoder` backed by BouncyCastle (`bcprov-jdk18on`) with minimum parameters: memory 65,536 KiB (64 MiB), 3 iterations, parallelism 1, 16-byte random salt, 32-byte hash output.
