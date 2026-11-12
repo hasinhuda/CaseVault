@@ -76,3 +76,14 @@ This backlog tracks identified technical debt, deferred security enhancements, a
 - Unicode bidirectional and other invisible formatting characters are accepted in report bodies.
 - Report body edits (drafts) are not audited; only create, submit and approve are.
 - Approval of a submitted report on a CLOSED case is allowed by assumption; confirm with the product owner.
+
+## Phase 7B admin backlog (DRAFT)
+
+- No admin password reset and no user creation UI.
+- Viewing the admin pages (user list, health) is not audited; only the actions are.
+- The session registry is in memory and per node: sessions on other nodes are not revoked, and a restart empties it (a disabled user is still stopped by the status filter on the next request).
+- The in-process admin lock covers one node; the database row lock on the active admins is the multi-node backstop and is untested on PostgreSQL.
+- Revoke-sessions leaves no trace on the target account (the audit row names only the actor); only enable and disable set users.status_changed_*.
+- The health page is a minimal set (database, evidence storage writable, last audit verification, head sequence). "Writable" is a permission check and writes nothing.
+- A refused admin action is shown as a flash message; there is no rate limit on admin actions (Phase 8).
+- Admin pages need Cache-Control no-store (Phase 8), like the audit pages.

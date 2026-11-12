@@ -17,7 +17,10 @@ import org.springframework.security.config.annotation.method.configuration.Enabl
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.core.session.SessionRegistry;
+import org.springframework.security.core.session.SessionRegistryImpl;
 import org.springframework.security.web.AuthenticationEntryPoint;
+import org.springframework.security.web.session.HttpSessionEventPublisher;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.DelegatingAuthenticationEntryPoint;
 import org.springframework.security.web.authentication.HttpStatusEntryPoint;
@@ -46,8 +49,20 @@ public class SecurityConfig {
         this.auditEventRecorder = auditEventRecorder;
     }
 
+    /** In-memory registry of active sessions (per node, lost on restart). */
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    public SessionRegistry sessionRegistry() {
+        return new SessionRegistryImpl();
+    }
+
+    /** Publishes session destruction so the registry forgets ended sessions. */
+    @Bean
+    public HttpSessionEventPublisher httpSessionEventPublisher() {
+        return new HttpSessionEventPublisher();
+    }
+
+    @Bean
+    public SecurityFilterChain securityFilterChain(HttpSecurity http, SessionRegistry sessionRegistry) throws Exception {
         LinkedHashMap<RequestMatcher, AuthenticationEntryPoint> entryPoints = new LinkedHashMap<>();
         entryPoints.put(AntPathRequestMatcher.antMatcher("/api/**"), new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED));
         entryPoints.put(new MediaTypeRequestMatcher(MediaType.APPLICATION_JSON), new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED));
@@ -100,6 +115,22 @@ public class SecurityConfig {
             .sessionManagement(session -> session
                 .sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED)
                 .sessionFixation(fixation -> fixation.changeSessionId())
+                // Unlimited sessions per user, but every session is registered so an admin can expire them
+                // (Phase 7B revoke-sessions). The expired session is refused on its next request.
+                .sessionConcurrency(concurrency -> concurrency
+                    .maximumSessions(-1)
+                    .sessionRegistry(sessionRegistry)
+                    .expiredSessionStrategy(event -> {
+                        jakarta.servlet.http.HttpServletRequest request = event.getRequest();
+                        jakarta.servlet.http.HttpServletResponse response = event.getResponse();
+                        String uri = request.getRequestURI();
+                        if (uri != null && uri.startsWith("/api/")) {
+                            response.setStatus(HttpStatus.UNAUTHORIZED.value());
+                        } else {
+                            new org.springframework.security.web.DefaultRedirectStrategy()
+                                .sendRedirect(request, response, "/login?expired=true");
+                        }
+                    }))
             )
             .addFilterBefore(new SessionAbsoluteTimeoutFilter(), UsernamePasswordAuthenticationFilter.class)
             .addFilterAfter(new UserStatusEnforcementFilter(userRepository), UsernamePasswordAuthenticationFilter.class);

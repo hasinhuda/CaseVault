@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head th:replace="~{layout :: htmlhead('Health')}">
+    <title>Health - CaseVault</title>
+</head>
+<body>
+<a href="#main-content" class="skip-link">Skip to main content</a>
+
+<div th:replace="~{layout :: appheader}"></div>
+
+<div class="app-shell">
+    <aside th:replace="~{layout :: appsidebar('health')}"></aside>
+
+    <main id="main-content" class="content-wrapper">
+        <div class="page-header">
+            <div>
+                <h1>System health</h1>
+                <p class="page-subtitle">A minimal set of checks. Technical details are deliberately not shown.</p>
+            </div>
+        </div>
+
+        <div class="card">
+            <table class="data-table">
+                <caption class="sr-only">Health checks</caption>
+                <thead>
+                <tr>
+                    <th scope="col">Check</th>
+                    <th scope="col">Result</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr>
+                    <th scope="row">Database reachable</th>
+                    <td>
+                        <span th:if="${health.databaseReachable()}" class="status-badge status-ok">Yes</span>
+                        <span th:if="${!health.databaseReachable()}" class="status-badge status-bad">No</span>
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row">Evidence storage writable</th>
+                    <td>
+                        <span th:if="${health.evidenceStorageWritable()}" class="status-badge status-ok">Yes</span>
+                        <span th:if="${!health.evidenceStorageWritable()}" class="status-badge status-bad">No</span>
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row">Audit chain (last verification)</th>
+                    <td>
+                        <span th:class="${health.chainState() == 'Chain valid' ? 'status-badge status-ok' : (health.chainState() == 'Not verified yet' ? 'status-badge status-neutral' : 'status-badge status-bad')}"
+                              th:text="${health.chainState()}">Not verified yet</span>
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row">Audit head sequence</th>
+                    <td th:text="${health.headSequence() != null ? health.headSequence() : 'No events'}">0</td>
+                </tr>
+                </tbody>
+            </table>
+            <p>The chain is not verified when this page loads. Run a verification on the <a th:href="@{/audit}">audit log page</a>.</p>
+        </div>
+    </main>
+</div>
+
+<div th:replace="~{layout :: appfooter}"></div>
+</body>
+</html>

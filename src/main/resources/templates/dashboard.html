@@ -19,6 +19,8 @@
         <a th:if="${role != 'AUDITOR_ADMIN'}" th:href="@{/cases}">Cases</a>
         <span th:if="${role == 'AUDITOR_ADMIN'}" class="text-muted" aria-disabled="true">Cases (Restricted)</span>
         <a th:if="${role == 'AUDITOR_ADMIN'}" th:href="@{/audit}">Audit log</a>
+        <a th:if="${role == 'AUDITOR_ADMIN'}" th:href="@{/admin/users}">Users</a>
+        <a th:if="${role == 'AUDITOR_ADMIN'}" th:href="@{/admin/health}">Health</a>
     </nav>
     <div class="user-profile">
         <span th:text="${username}">user</span>

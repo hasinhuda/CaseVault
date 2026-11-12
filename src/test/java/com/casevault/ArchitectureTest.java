@@ -121,6 +121,15 @@ class ArchitectureTest {
             .because("the interface is the single entry point of the report workflow");
 
     @ArchTest
+    static final ArchRule controllersUseAdminServiceInterfaceOnly = noClasses()
+            .that().resideInAPackage("..controller..")
+            .should().dependOnClassesThat().haveSimpleName("DefaultAdminUserService")
+            .orShould().dependOnClassesThat().haveSimpleName("UserRepository")
+            .orShould().dependOnClassesThat().haveSimpleNameStartingWith("SessionRegistry")
+            .as("SEC-ADMIN-ARCH-01: Controllers reach admin functions only through the AdminUserService interface")
+            .because("self-action, last-admin and session rules live in the service; controllers must not touch users or sessions directly");
+
+    @ArchTest
     static final ArchRule controllersMustNotAccessEvidenceRepositoryOrStorage = noClasses()
             .that().resideInAPackage("..controller..")
             .should().dependOnClassesThat().haveNameMatching(".*(EvidenceRepository|EvidenceStorageService|EvidenceStore).*")

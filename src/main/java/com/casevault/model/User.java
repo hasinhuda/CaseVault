@@ -57,6 +57,12 @@ public class User {
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
+    @Column(name = "status_changed_at")
+    private Instant statusChangedAt;
+
+    @Column(name = "status_changed_by", length = 36)
+    private String statusChangedBy;
+
     public User() {
     }
 
@@ -171,6 +177,21 @@ public class User {
 
     public void setUpdatedAt(Instant updatedAt) {
         this.updatedAt = updatedAt;
+    }
+
+    public Instant getStatusChangedAt() {
+        return statusChangedAt;
+    }
+
+    public String getStatusChangedBy() {
+        return statusChangedBy;
+    }
+
+    /** Records who enabled or disabled the account and when (target traceability; the audit row stores the actor only). */
+    public void recordStatusChange(String actorUserId, Instant now) {
+        this.statusChangedBy = actorUserId;
+        this.statusChangedAt = now;
+        this.updatedAt = now;
     }
 
     public boolean isAccountLocked(Instant now) {

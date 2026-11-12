@@ -7,4 +7,9 @@ public interface EvidenceStore {
     byte[] decryptAndRetrieve(String storedName, byte[] associatedData);
 
     void discardQuietly(String storedName);
+
+    /** True when the storage directory exists (or can be created) and is writable. Never throws, writes nothing. */
+    default boolean isWritable() {
+        return false;
+    }
 }

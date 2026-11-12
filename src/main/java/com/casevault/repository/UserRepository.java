@@ -18,6 +18,11 @@ public interface UserRepository extends JpaRepository<User, String> {
     long countByRole(Role role);
     java.util.List<User> findByRoleAndEnabledTrue(Role role);
 
+    /** Row-locks every active user of the role (fixed order) so concurrent disable decisions are serialised. */
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT u FROM User u WHERE u.role = :role AND u.enabled = true ORDER BY u.id")
+    java.util.List<User> lockActiveByRole(@Param("role") Role role);
+
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("UPDATE User u SET u.failedLoginAttempts = u.failedLoginAttempts + 1, u.updatedAt = :now WHERE u.id = :userId")
     void incrementFailedAttempts(@Param("userId") String userId, @Param("now") Instant now);

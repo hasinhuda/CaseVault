@@ -25,7 +25,7 @@ import java.util.regex.Pattern;
  * verification result is kept in memory (lost on restart, per node): the chain is NOT verified on page views.
  */
 @Service
-public class AuditQueryService {
+public class AuditQueryService implements AuditStatusProvider {
 
     public static final int DEFAULT_PAGE_SIZE = 25;
     public static final int MAX_PAGE_SIZE = AuditLogService.MAX_READ_PAGE_SIZE;
@@ -85,8 +85,21 @@ public class AuditQueryService {
         }
     }
 
+    /** Last verification result and chain head, for the health page. Never triggers a verification. */
+    public record ChainSummary(VerificationStatus verification, HeadView head) {
+    }
+
     /** Outcome of a verification request. */
     public enum VerifyOutcome { COMPLETED_VALID, COMPLETED_INVALID, ALREADY_RUNNING }
+
+    @Override
+    public ChainSummary chainSummary() {
+        VerificationStatus last = lastVerification;
+        HeadView head = auditLogService.currentHead()
+                .map(h -> new HeadView(h.sequenceNo(), h.hmac().substring(0, Math.min(12, h.hmac().length()))))
+                .orElse(null);
+        return new ChainSummary(last, head);
+    }
 
     public AuditPageView view(CaseVaultUserPrincipal principal, String eventTypeRaw, String userIdRaw,
                               String fromRaw, String toRaw, String pageRaw, String sizeRaw) {

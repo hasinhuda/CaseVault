@@ -859,4 +859,30 @@ public class AuthorisationOperationMatrixTest {
         assertReportNotFound(() -> svc.get(caseId, reportId, principalFor(auditorUser)), "auditor");
         assertReportNotFound(() -> svc.list(caseId, principalFor(auditorUser)), "auditor list");
     }
+
+    // ---- Phase 7B: admin operation matrix (ADDED; no existing test changed) ----
+
+    @Test
+    @DisplayName("SEC-ADMIN-AUTHZ-01: admin routes and actions: only AUDITOR_ADMIN is served; MANAGER, ANALYST and CLIENT roles get 404 (never 403)")
+    void adminOperationMatrix() throws Exception {
+        String targetId = clientUserB.getId();
+        for (User denied : new User[]{managerAlice, analystBob, clientUserA, clientManagerA}) {
+            mockMvc.perform(get("/admin/users").with(authentication(authFor(denied)))).andExpect(status().isNotFound());
+            mockMvc.perform(get("/admin/health").with(authentication(authFor(denied)))).andExpect(status().isNotFound());
+            mockMvc.perform(get("/admin/users/{id}/disable-confirm", targetId).with(authentication(authFor(denied))))
+                    .andExpect(status().isNotFound());
+            for (String action : new String[]{"disable", "enable", "revoke-sessions"}) {
+                mockMvc.perform(post("/admin/users/{id}/" + action, targetId).with(authentication(authFor(denied))).with(csrf()))
+                        .andExpect(status().isNotFound());
+            }
+        }
+        assertEquals(true, userRepository.findById(targetId).orElseThrow().isEnabled());
+        mockMvc.perform(get("/admin/users").with(authentication(authFor(auditorUser)))).andExpect(status().isOk());
+        mockMvc.perform(get("/admin/health").with(authentication(authFor(auditorUser)))).andExpect(status().isOk());
+        mockMvc.perform(get("/admin/users/{id}/disable-confirm", targetId).with(authentication(authFor(auditorUser))))
+                .andExpect(status().isOk());
+        // The auditor still has no access to case content.
+        mockMvc.perform(get("/api/cases/{id}", caseA1AssignedToBob.getId()).with(authentication(authFor(auditorUser))))
+                .andExpect(status().isNotFound());
+    }
 }
