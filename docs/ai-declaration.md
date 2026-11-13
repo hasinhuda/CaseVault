@@ -2,6 +2,8 @@
 
 This document transparently tracks all AI tooling and assistant usage during the engineering of CaseVault, detailing the date, tool, scope of assistance, and verification method.
 
+> **Completeness note (added 2026-11-13, documentation honesty fix).** The table below records tool and model for the entries up to Phase 4 (2026-11-10). Every entry below the heading "AI declaration" (dated 2026-11-11 onward, written as single lines) has **no tool/model column**: [tool/model to be completed by the author]. The "Verified By" information for those entries is inside each line. The author must complete this declaration before submission; nothing here has been invented.
+
 | Date | Tool | What | Verified By |
 | ---- | ---- | ---- | ----------- |
 | 2026-11-09 | Antigravity (Gemini 3.8 Flash) | Phase 0 baseline repository scaffolding, Maven pom configuration, quality gates, GitHub Actions workflows, initial health tests | Maven verify build, unit tests, secret checks, manual review |
@@ -41,3 +43,7 @@ This document transparently tracks all AI tooling and assistant usage during the
 - 2026-11-13: Assisted with Phase 9E: documentation drift fixes (README run command, CSP nonce claims, session cap text), finding F-012 (not fixed), local-profile-only demo data in DataBootstrapService (second client organisation, user, DEMO case, second administrator; random passwords), honouring casevault.bootstrap.credentials-dir, tests DEMO-LOCAL-01..04 and DEMO-ABSENT-01..02, ADR 0008; verified via mvnw verify in two run orders. [DRAFT]
 
 - 2026-11-13: Assisted with logging finding F-013 (bootstrap ignored casevault.bootstrap.credentials-dir; cause confirmed from git history, fix and test limits recorded); documentation only. [DRAFT]
+
+- 2026-11-13: Assisted with a read-only brief compliance audit (docs/assurance/brief-audit.md): requirements, threats, assurance, checklist, phases, claims check; nothing fixed, no source change; verified via mvnw verify, git and link/ID checks. [DRAFT]
+
+- 2026-11-13: Assisted with the documentation honesty fix (unsupported claims in README, threat model, architecture, data flow, requirements implementation notes, privacy-retention, ADR 0004 note, trivy target, AGENTS.md CSP line, F-010 row, assurance index, new known-limitations.md, completeness note in this file); documentation only, nothing in src changed; verified via mvnw verify and a link check. [DRAFT]

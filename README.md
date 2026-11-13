@@ -13,10 +13,10 @@ CaseVault is a secure case-management and evidence-handling platform designed fo
 - **Defensive Engineering**:
   - Strict Content Security Policy (CSP) delivered as two headers (`default-src 'self'` and `script-src 'self'`, no `unsafe-inline`, no `unsafe-eval`). There is no per-request nonce: the templates contain no inline script or style, so none is needed.
   - Argon2id password hashing via Spring Security and BouncyCastle.
-  - Google Tink envelope encryption at rest for sensitive evidence artifacts.
+  - Evidence files are encrypted at rest with AES-256-GCM (AEAD) through Google Tink. The Tink keyset is stored as cleartext JSON in a git-ignored folder beside the data (documented residual risk; there is no key hierarchy and no secret manager).
   - Cryptographic tamper-evident audit logging using JDK HMAC-SHA256 chains.
   - Safe error handling: correlation IDs only, no stack traces or internal schema details exposed.
-  - Content sanitization and strict context-aware output encoding (Thymeleaf `th:text`).
+  - Output escaping on every page (Thymeleaf `th:text`, no `th:utext`). There is no content sanitisation or redaction of report or note text.
 
 ## Prerequisites
 
@@ -37,6 +37,10 @@ On Linux / macOS:
 ./mvnw -B verify
 ```
 
+## Testing
+
+Result of a fresh `.\mvnw.cmd -B verify` on 2026-11-13 (this is the only place in the documentation that states the current total): **354 tests, 0 failures, 0 skipped**, SpotBugs `BugInstance size is 0`. Other documents quote older totals and label them with their phase. The manual browser tests in [docs/assurance/manual-browser-tests.md](docs/assurance/manual-browser-tests.md) have **not** been executed yet. What is not built or only partly built is listed in [docs/assurance/known-limitations.md](docs/assurance/known-limitations.md).
+
 ## Running locally
 
 Start the application with the `local` profile (HTTP on port 8080, in-memory H2 database, session cookie without `Secure` so that it works over plain http):
@@ -54,5 +58,6 @@ Then open `http://localhost:8080/login`. On every start the `local` profile crea
 - [Backlog & Known Issues](docs/issues-backlog.md)
 - [Architecture Decision Records](docs/adr/)
 - [Security Assurance Documents](docs/assurance/)
+- [Known Limitations](docs/assurance/known-limitations.md)
 - [Contributing Guide](CONTRIBUTING.md)
 - [Security Policy](SECURITY.md)

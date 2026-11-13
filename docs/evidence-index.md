@@ -274,3 +274,16 @@ All Phase 5 evidence requirements (Groups A through G) verified. Phase 6 cryptog
 | Requirement ID | Description | Source / Config | Automated Test / Gate | CI Verification | Status |
 |---|---|---|---|---|---|
 | BOOTSTRAP-CREDDIR (F-013, SR-16) | `casevault.bootstrap.credentials-dir` is honoured (bound to `java.nio.file.Path`, default `.local-data`); local-profile tests no longer write the developer's real credentials file; no SpotBugs suppression | [DataBootstrapService.java](../src/main/java/com/casevault/bootstrap/DataBootstrapService.java), [findings-log.md](assurance/findings-log.md) | DEMO-LOCAL-04 (`DemoDataLocalProfileTest`) asserts the file is written into the configured directory; SpotBugs/FindSecBugs gate in `verify`. No test asserts that the real `.local-data` file stays untouched | CI `build-test-coverage` | Fixed in Phase 9E; limits recorded in F-013 |
+
+## Brief compliance audit (DRAFT)
+
+| Requirement ID | Description | Source / Config | Automated Test / Gate | CI Verification | Status |
+|---|---|---|---|---|---|
+| BRIEF-AUDIT | Read-only audit of the repository against the CYS22301 brief and the phase plan: functional and security requirements, 11 threats, assurance activities, acceptance criteria, submission checklist, phases, claims check, scorecard, top gaps | [brief-audit.md](assurance/brief-audit.md) | None (audit); the verify run and link/ID checks it reports are listed in the document | not applicable | Draft; no gap fixed by the audit |
+
+## Documentation honesty fix (DRAFT)
+
+| Requirement ID | Description | Source / Config | Automated Test / Gate | CI Verification | Status |
+|---|---|---|---|---|---|
+| DOC-HONESTY-9F | Unsupported claims reworded to what is built, design targets labelled "TARGET (not built in this submission)" (TLS, reverse proxy, read-only root, envelope wording, content sanitisation, retention, SR-04/SR-06/SR-12/SR-18/SR-20 implementation notes, Trivy target, CSP nonce in AGENTS.md); finding F-010 row made consistent | [brief-audit.md](assurance/brief-audit.md) section H2, [requirements.md](requirements.md), [privacy-retention.md](privacy-retention.md) | None (documentation); link check over all markdown files | not applicable | Done; browser and CI evidence still pending |
+| KNOWN-LIMITATIONS | One consolidated list of what is not implemented, implemented with limits, and design decisions | [known-limitations.md](assurance/known-limitations.md) | None (documentation) | not applicable | Draft |

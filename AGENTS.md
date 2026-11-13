@@ -21,7 +21,7 @@ with BouncyCastle), Google Tink for encryption at rest, JDK HMAC-SHA256 for the 
 2. Every request is re-validated and re-authorised server-side. Never trust the UI, hidden fields or client role/org values.
 3. Cross-tenant or unauthorised object access returns 404 (not 403) for case/evidence objects.
 4. Output encoded by default (th:text only). Forbidden: th:utext, innerHTML, inline scripts/handlers, localStorage for secrets.
-5. Strict CSP with per-request nonce, X-Content-Type-Options nosniff, X-Frame-Options DENY, Referrer-Policy, Permissions-Policy.
+5. Strict CSP (two headers, script-src 'self', no nonce), X-Content-Type-Options nosniff, X-Frame-Options DENY, Referrer-Policy, Permissions-Policy.
 6. Session cookie HttpOnly, SameSite=Strict, Secure (disabled only in the local http profile; prove Secure by test).
 7. No secrets in code, logs, git or client. Generate keys and the initial admin password at first run into secrets/ or
    .local-data/ (git-ignored). Logs never contain passwords, tokens or file contents.

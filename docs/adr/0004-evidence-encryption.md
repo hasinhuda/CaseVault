@@ -58,3 +58,8 @@ Residual risk: this prototype stores the Tink keyset beside (but outside) the en
 - **ASVS 5.0**:
   - V6 Cryptographic Verification (V6.2.1, V6.2.2 [VERIFY MANUALLY])
   - V12 File and Resource Verification (V12.1.1, V12.1.2 [VERIFY MANUALLY])
+
+
+## Implementation note (docs honesty fix, Phase 9F)
+
+The code uses one Tink AEAD keyset (`AeadKeyTemplates.AES256_GCM`) directly; it is **not** an envelope-encryption scheme (no key-encryption key or hierarchy), whatever the title above says. The keyset is persisted as cleartext JSON at `casevault.storage.keyset-path` (default `.local-data/keys/evidence-keyset.json`, not `.local-data/keyset.json`); owner-only file permissions are set on POSIX systems and are best effort on Windows (VERIFY MANUALLY). This is a documented residual risk; see [known-limitations.md](../assurance/known-limitations.md).

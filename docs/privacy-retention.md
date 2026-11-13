@@ -1,5 +1,7 @@
 # Data Privacy & Retention Policy: CaseVault
 
+> **Status: design only (TARGET, not built in this submission).** The retention schedules, shredding, purge, erasure and report-redaction rules below describe intended behaviour. **No purge, deletion, erasure or redaction code exists**, there is no scheduled job, and `EVIDENCE_PURGED` is not an audit event type in the code. What is built: audit rows hold identifiers only (no names, titles or file content), log lines carry no secrets or content (SEC-LOG-01..03), passwords are stored only as Argon2id hashes, and evidence files are encrypted at rest. See [known-limitations.md](assurance/known-limitations.md).
+
 ## 1. Regulatory Context & Privacy Principles
 CaseVault processes sensitive incident response data, forensic evidence, and client operational telemetry. The platform adheres to **Data Protection by Design and by Default** (aligned with GDPR Article 5 and international forensic data standards).
 
@@ -11,7 +13,7 @@ CaseVault processes sensitive incident response data, forensic evidence, and cli
 
 ---
 
-## 2. Data Classification & Retention Schedules
+## 2. Data Classification & Retention Schedules (TARGET - not built)
 
 | Data Category | Specific Elements | Retention Period | Post-Retention Action | Compliance Rationale |
 |---|---|---|---|---|
@@ -25,16 +27,16 @@ CaseVault processes sensitive incident response data, forensic evidence, and cli
 
 ---
 
-## 3. Cryptographic Shredding & Secure Deletion
+## 3. Cryptographic Shredding & Secure Deletion (TARGET - not built)
 When an evidence artifact reaches the end of its retention schedule:
 1. **Ciphertext Shredding**: The encrypted file on disk is overwritten with random bytes and unlinked (`rm`).
 2. **Key Erasure**: If tenant-specific sub-keys are employed, key deletion renders any historical disk snapshots permanently unrecoverable.
 3. **Database Purge**: Corresponding database foreign keys and row pointers are deleted or marked purged.
-4. **Audit Logging**: An immutable audit record `EVIDENCE_PURGED` is appended to the HMAC chain recording the deletion event, authorizer ID, and timestamp.
+4. **Audit Logging**: (TARGET; `EVIDENCE_PURGED` is not defined in the code) An immutable audit record `EVIDENCE_PURGED` is appended to the HMAC chain recording the deletion event, authorizer ID, and timestamp.
 
 ---
 
-## 4. Report Sanitisation & Data Minimisation Rules
+## 4. Report Sanitisation & Data Minimisation Rules (TARGET - not built; reports are plain text with escaped output only)
 Before an incident report is generated or exported to client stakeholders:
 - **PII Scrubbing**: Analyst notes containing personal phone numbers, home addresses, or unrelated third-party identities are scrubbed or pseudonymized.
 - **Credential Masking**: Password strings, session tokens, or API secrets discovered during forensics must be masked (e.g. `AKIA****************`) in report drafts.
