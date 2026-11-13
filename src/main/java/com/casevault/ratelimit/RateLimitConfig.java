@@ -18,7 +18,19 @@ public class RateLimitConfig {
 
     @Bean
     public RateLimitFilter rateLimitFilter(RateLimiter limiter, RateLimitSettings settings, Clock clock,
-                                           org.thymeleaf.spring6.view.ThymeleafViewResolver thymeleafViewResolver) {
+                                           org.thymeleaf.spring6.view.ThymeleafViewResolver thymeleafViewResolver,
+                                           org.springframework.boot.autoconfigure.web.ServerProperties serverProperties) {
+        // Phase 12A: with Tomcat's remote address handling ("native") or Spring's ForwardedHeaderFilter ("framework")
+        // the request already carries the client address, and an X-Forwarded-For left over from a spoofed prefix could
+        // still be read here. The two mechanisms must not be combined.
+        org.springframework.boot.autoconfigure.web.ServerProperties.ForwardHeadersStrategy strategy =
+                serverProperties.getForwardHeadersStrategy();
+        if (settings.trustForwardedFor() && strategy != null
+                && strategy != org.springframework.boot.autoconfigure.web.ServerProperties.ForwardHeadersStrategy.NONE) {
+            throw new IllegalStateException("casevault.ratelimit.trust-forwarded-for=true must not be combined with "
+                    + "server.forward-headers-strategy=" + strategy
+                    + ": the client address is already resolved from the proxy header; use only one mechanism.");
+        }
         ViewResolver resolver = thymeleafViewResolver;
         return new RateLimitFilter(limiter, settings, clock, new ThymeleafBlockedPageRenderer(resolver));
     }

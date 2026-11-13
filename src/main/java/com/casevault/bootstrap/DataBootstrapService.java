@@ -19,8 +19,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.attribute.PosixFilePermissions;
 import java.security.SecureRandom;
 import java.time.Instant;
 import java.util.LinkedHashMap;
@@ -47,6 +49,14 @@ public class DataBootstrapService implements ApplicationRunner {
     @Value("${casevault.bootstrap.credentials-dir:.local-data}")
     private Path credentialsDir;
 
+    /** Phase 12A opt-in (default false), honoured only in the prod-like profile. */
+    @Value("${casevault.bootstrap.initial-accounts-enabled:false}")
+    private boolean initialAccountsEnabled;
+
+    /** Where the one-time credentials of the opt-in are written; no default. */
+    @Value("${casevault.bootstrap.initial-credentials-file:#{null}}")
+    private Path initialCredentialsFile;
+
     public DataBootstrapService(OrganisationRepository organisationRepository,
                                 UserRepository userRepository,
                                 PasswordEncoder passwordEncoder,
@@ -62,9 +72,16 @@ public class DataBootstrapService implements ApplicationRunner {
     @Override
     @Transactional
     public void run(ApplicationArguments args) {
-        if (environment.matchesProfiles("prod-like")) {
+        boolean prodLike = environment.matchesProfiles("prod-like");
+        if (prodLike && !initialAccountsEnabled) {
             logger.info("Prod-like profile active: bootstrap is disabled in production environments.");
             return;
+        }
+        if (prodLike && initialCredentialsFile == null) {
+            // Phase 12A: the opt-in must say where the one-time credentials go. Nothing is created and nothing is printed.
+            throw new IllegalStateException("casevault.bootstrap.initial-accounts-enabled=true requires "
+                    + "casevault.bootstrap.initial-credentials-file (a path for the one-time credentials file); "
+                    + "refusing to start without it.");
         }
 
         if (userRepository.count() > 0) {
@@ -157,6 +174,39 @@ public class DataBootstrapService implements ApplicationRunner {
             Map<String, String> demoCredentials = createLocalDemoData(now);
             saveCredentialsToLocalFile(adminPassword, managerPassword, analystPassword, clientPassword, demoCredentials);
             printBootstrapConsoleBanner(adminPassword, managerPassword, analystPassword, clientPassword, demoCredentials);
+        } else if (prodLike) {
+            // Phase 12A: explicit opt-in for a deployed stack. The four standard accounts only (no demo data), the
+            // credentials go ONLY to the configured file; nothing is printed or logged. If the file cannot be
+            // written the transaction rolls back, so no account exists whose password nobody knows.
+            Map<String, String> initial = new LinkedHashMap<>();
+            initial.put("admin_auditor", adminPassword);
+            initial.put("manager_alice", managerPassword);
+            initial.put("analyst_bob", analystPassword);
+            initial.put("client_charlie", clientPassword);
+            writeInitialCredentialsFile(initial);
+            logger.info("Initial accounts created; the credentials were written to the configured file.");
+        }
+    }
+
+    /** One-time credentials file for a deployed stack: owner-only permissions where the platform supports them. */
+    private void writeInitialCredentialsFile(Map<String, String> credentials) {
+        Path file = initialCredentialsFile.toAbsolutePath().normalize();
+        StringBuilder content = new StringBuilder("# CaseVault initial credentials (one time; delete this file after the first login)\n");
+        credentials.forEach((name, pw) -> content.append(name).append('=').append(pw).append('\n'));
+        try {
+            Path parent = file.getParent();
+            if (parent != null) {
+                Files.createDirectories(parent);
+            }
+            Files.deleteIfExists(file);
+            if (FileSystems.getDefault().supportedFileAttributeViews().contains("posix")) {
+                Files.createFile(file, PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rw-------")));
+            } else {
+                Files.createFile(file);
+            }
+            Files.writeString(file, content.toString(), StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            throw new IllegalStateException("The initial credentials file could not be written; no accounts were created.", e);
         }
     }
 
