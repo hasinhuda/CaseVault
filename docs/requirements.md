@@ -154,6 +154,7 @@ The system supports four distinct operational roles with strict separation of du
 - **Description**: The system must lock user accounts after 5 consecutive failed login attempts for a duration of 15 minutes. Authentication failure responses must return generic error messages (*"Invalid username or password"*). For non-existent usernames, a dummy Argon2id verification must be executed to equalize response timing.
 - **Rationale**: Neutralizes credential stuffing, automated brute force, and username enumeration.
 - **Verification Method**: Automated suite executing brute-force cycles, asserting uniform HTTP 401 error responses, identical message strings, and comparable timing profiles.
+- **Implementation note (docs honesty fix):** a failed browser login is answered with a 302 redirect to `/login?error=true` (a generic message), not an HTTP 401; `/api/**` without credentials answers 401. A locked or disabled account gets the same generic message (no separate lockout message). Tests: `AuthenticationLockoutSecurityTest`, SEC-RATE-WEB-01.
 - **Standards Mapping**: CWE-307, CWE-204, OWASP Top 10:2025 A07 [VERIFY MANUALLY] / A07:2021, ASVS 5.0 V2.2 [VERIFY MANUALLY].
 
 ### SR-05: Secure Session Lifecycle & Strict Cookie Flags
@@ -166,6 +167,7 @@ The system supports four distinct operational roles with strict separation of du
 - **Description**: The user who authored or drafted an incident report is strictly prohibited from approving that report. Approval requires a distinct user holding the `MANAGER` role.
 - **Rationale**: Eliminates unilateral tampering, accidental release of unverified claims, and single-operator fraud.
 - **Verification Method**: Workflow integration test validating that self-approval attempts throw `SelfApprovalException` and return HTTP 400/422.
+- **Implementation note (docs honesty fix):** there is no `SelfApprovalException`. `DefaultReportService.approve` throws `BadRequestException("The author of a report cannot approve it")` (HTTP 400) and records `ACCESS_DENIED`. Only ANALYSTs can author reports and only MANAGERs can approve, so the self-approval branch cannot be reached through the UI with the bootstrap roles; the rule is checked in the service regardless of roles. Tests: SEC-REPORT-WEB-05 (see `docs/assurance/report-tests.md`).
 - **Standards Mapping**: CWE-284, OWASP Top 10:2025 A01 [VERIFY MANUALLY] / A01:2021, ASVS 5.0 V4.1 [VERIFY MANUALLY].
 
 ### SR-07: Strict Auditor-Admin Content Boundary
@@ -203,6 +205,7 @@ The system supports four distinct operational roles with strict separation of du
 - **Description**: Evidence binaries stored on disk must be encrypted using Google Tink envelope encryption with AES-256-GCM. Decryption keys are stored outside the storage directory in `.local-data/` or `secrets/` (git-ignored).
 - **Rationale**: Protects sensitive client evidence artifacts against offline disk inspection and unauthorized volume snapshots.
 - **Verification Method**: Test reading raw stored file bytes from disk to prove ciphertext is non-plaintext before deciphering.
+- **Implementation note (docs honesty fix):** implemented as AES-256-GCM authenticated encryption (AEAD) through Google Tink (`AeadKeyTemplates.AES256_GCM`), not as an envelope scheme: there is no key-encryption key or key hierarchy. The Tink keyset is stored as cleartext JSON (`CleartextKeysetHandle`) at `casevault.storage.keyset-path` (default `.local-data/keys/evidence-keyset.json`, git-ignored, owner-only permissions on POSIX systems only). That is a documented residual risk. See [evidence-upload-tests.md](assurance/evidence-upload-tests.md) and [known-limitations.md](assurance/known-limitations.md).
 - **Standards Mapping**: CWE-311, CWE-327, OWASP Top 10:2025 A02 [VERIFY MANUALLY] / A02:2021, ASVS 5.0 V6.2 [VERIFY MANUALLY].
 
 ### SR-13: Cryptographic Tamper-Evident Audit Chaining (HMAC-SHA256)
@@ -239,6 +242,7 @@ The system supports four distinct operational roles with strict separation of du
 - **Description**: Container image must run under a dedicated unprivileged user (`UID 10001: GID 10001`), with multi-stage build, minimal runtime JRE base, and upgraded OS packages.
 - **Rationale**: Restricts container breakout capabilities and reduces Linux host attack surface.
 - **Verification Method**: Hadolint Dockerfile linting and Trivy container scan.
+- **Implementation note (docs honesty fix):** built: multi-stage `Dockerfile`, digest-pinned base images, `USER 10001:10001`, OS package upgrade; Hadolint and Trivy run in CI. **TARGET (not built in this submission):** read-only root filesystem, dropped capabilities and resource limits (no compose or runtime configuration exists).
 - **Standards Mapping**: CWE-250, OWASP Top 10:2025 A05 [VERIFY MANUALLY] / A05:2021, ASVS 5.0 V14.3 [VERIFY MANUALLY].
 
 ### SR-19: Synthetic Data & Antivirus Stub Isolation
@@ -251,4 +255,5 @@ The system supports four distinct operational roles with strict separation of du
 - **Description**: Case evidence, session records, and closed case data must observe strict retention schedules. Expired evidence files must undergo cryptographic shredding and secure deletion.
 - **Rationale**: Complies with privacy-by-design standards (GDPR Art 5) and reduces data breach liability.
 - **Verification Method**: Scheduled purge job automated tests verifying deletion of records past retention threshold.
+- **Implementation note (docs honesty fix):** **TARGET (not built in this submission) - design only.** No retention schedule, purge job, evidence shredding, deletion or erasure code exists in `src/main`; `EVIDENCE_PURGED` is not an audit event type; the verification method above has no test. What exists is data minimisation in the audit log (ids only) and log hygiene (SEC-LOG-01..03). See [privacy-retention.md](privacy-retention.md) and [known-limitations.md](assurance/known-limitations.md).
 - **Standards Mapping**: CWE-226, OWASP Top 10:2025 A04 [VERIFY MANUALLY] / A04:2021, ASVS 5.0 V8.3 [VERIFY MANUALLY].

@@ -1,14 +1,14 @@
 # Trivy Container & Dependency Scan Assessment
 
 **Date**: 2026-11-10  
-**Target**: `app/app.jar` (Container image scan in CI)  
+**Target**: the container image `casevault:latest`, built from the repository `Dockerfile` in the CI job `container-build-lint-scan`; the findings were reported against the packaged jar inside the image, recorded here as `app/app.jar`. **Scan dates**: 2026-11-10 (Phase 0 and Phase 2). No later Trivy output is stored in this repository  
 **Scanner Configuration**: Trivy (`--exit-code 1 --ignore-unfixed --severity CRITICAL,HIGH`)
 
 ---
 
 ## 1. Executive Summary
 
-During CI container vulnerability scanning of `app/app.jar`, Trivy reported 14 high and critical severity findings (HIGH: 7, CRITICAL: 7) across four dependency groups in Phase 0:
+During CI container vulnerability scanning of the image (jar `app/app.jar` inside it), Trivy reported 14 high and critical severity findings (HIGH: 7, CRITICAL: 7) across four dependency groups in Phase 0:
 - **Jackson** (`com.fasterxml.jackson.core:*`): 5 findings (all Denial of Service: regex backtracking, unbounded StringBuilder growth, unbounded numeric parsing, unbounded cache growth, quadratic forward-reference completion)
 - **Apache Tomcat** (`org.apache.tomcat.embed:*`): 6 findings (5 CRITICAL + 1 HIGH: security constraint bypass, DIGEST and FORM authentication bypass, HTTP/2 no-authority bypass, misleading security logs, rewrite valve control flow)
 - **PostgreSQL JDBC Driver** (`org.postgresql:postgresql`): 1 finding (1 HIGH: SCRAM-SHA-256-PLUS downgrade, man-in-the-middle)

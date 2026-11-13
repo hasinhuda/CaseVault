@@ -7,6 +7,8 @@ CaseVault is structured as a modular layered monolith built on Java 21 LTS and S
 
 ## 2. Component Architecture & Trust Boundaries
 
+> **As built vs target.** Built: browser to application over plain HTTP, the Spring Security filter chain, controllers, access policy, services, Argon2id / Tink / HMAC, PostgreSQL (prod-like profile; the default and local profiles use in-memory H2), encrypted evidence files and a file-based key store. **TARGET (not built in this submission):** the "Reverse Proxy or TLS Termination Gateway" node and the HTTPS hop in front of it. There is no TLS configuration, nginx or compose file in the repository. See [known-limitations.md](assurance/known-limitations.md).
+
 ```mermaid
 flowchart TD
     subgraph ClientZone["Client Zone (Untrusted)"]
@@ -14,7 +16,7 @@ flowchart TD
     end
 
     subgraph PerimeterZone["Perimeter and Transport Zone (TLS Boundary)"]
-        Ingress["Reverse Proxy or TLS Termination Gateway"]
+        Ingress["Reverse Proxy or TLS Termination Gateway - TARGET (not built)"]
     end
 
     subgraph AppZone["CaseVault Application Runtime (Trusted Boundary)"]
@@ -33,7 +35,7 @@ flowchart TD
         KeyStore[("Local Key Store (.local-data/ or secrets/ - Git Ignored)")]
     end
 
-    Browser -->|HTTPS / WSS| Ingress
+    Browser -->|HTTPS target only| Ingress
     Ingress -->|Forwarded HTTP Request| SecurityFilter
     SecurityFilter -->|Authenticated Principal| WebControllers
     WebControllers -->|DTO Request| AccessPolicy
@@ -72,7 +74,7 @@ flowchart TD
 
 ### 3.3 Cryptographic Tier
 - **Argon2id (Passwords)**: Spring Security `Argon2PasswordEncoder` with BouncyCastle (`memory=65536`, `iterations=3`, `parallelism=1`).
-- **Google Tink (Evidence at Rest)**: Envelope encryption with AES-256-GCM. Raw evidence is encrypted in memory before disk write.
+- **Google Tink (Evidence at Rest)**: AES-256-GCM authenticated encryption (Tink AEAD) of each evidence file; there is no key hierarchy. The keyset is stored as cleartext JSON beside the data (documented residual risk). Raw evidence is encrypted in memory before disk write.
 - **HMAC-SHA256 (Audit Chain)**: Monotonically chained audit logs where each row hashes previous hash + current payload + actor + millisecond-truncated timestamp.
 
 ### 3.4 Data & Persistence Tier
