@@ -35,3 +35,5 @@ This document transparently tracks all AI tooling and assistant usage during the
 - 2026-11-13: Assisted with fixing F-010 (session id in URLs on the signed-out CSRF 403 page): reproduced with real HTTP, set server.servlet.session.tracking-modes=cookie, tightened link assertions, added SEC-SESSURL-01..04; verified via mvnw verify in two run orders. [DRAFT]
 
 - 2026-11-13: Assisted with Phase 9C accessibility fixes (finding F-011): AA colour contrast, :focus-visible, login main, heading levels, table caption, aria-current, per-row accessible names; new tests UI-A11Y-CONTRAST, FOCUS, STRUCT, NAV, ACTIONS; verified via mvnw verify in two run orders. [DRAFT]
+
+- 2026-11-13: Assisted with Phase 9D manual browser test guide (docs/assurance/manual-browser-tests.md, 57 cases MAN-01..MAN-57, blank result tables, screenshot convention); documentation only, written from code and config, nothing executed by the assistant. [DRAFT]

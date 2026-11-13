@@ -253,3 +253,10 @@ All Phase 5 evidence requirements (Groups A through G) verified. Phase 6 cryptog
 | UI-A11Y-FOCUS (F-011) | `:focus-visible` ring for all interactive elements; no outline removed | [app.css](../src/main/resources/static/css/app.css) | UI-A11Y-FOCUS-01 | CI `build-test-coverage` | Verified locally |
 | UI-A11Y-STRUCT (F-011) | lang, title, one h1, main, no heading skips, table captions and th scope, labelled controls, skip link targets | [templates](../src/main/resources/templates) | UI-A11Y-STRUCT-01..04 (`UiA11yStructureTest`) | CI `build-test-coverage` | Verified locally |
 | UI-A11Y-NAV (F-011) | `aria-current` on the active navigation link per role, distinct accessible names for repeated row actions | [layout.html](../src/main/resources/templates/layout.html), [users.html](../src/main/resources/templates/admin/users.html), [list.html](../src/main/resources/templates/cases/list.html) | UI-A11Y-NAV-01..02, UI-A11Y-ACTIONS-01 (`UiA11yRenderedTest`) | CI `build-test-coverage` | Verified locally; screen reader VERIFY MANUALLY |
+
+## Phase 9D: manual browser test guide (DRAFT)
+
+| Requirement ID | Description | Source / Config | Automated Test / Gate | CI Verification | Status |
+|---|---|---|---|---|---|
+| MAN-GUIDE-9D | Step-by-step manual browser tests (MAN-01..MAN-57: login/logout, cookie flags, session cap, headers, case workflow, evidence, reports, auditor pages, error and 429 pages, accessibility) with blank result, screenshot and defect tables; written from the code, not executed by the author | [manual-browser-tests.md](assurance/manual-browser-tests.md) | None (human-run); related automated ids are named per row | not applicable | Draft; results pending (tester) |
+| MAN-SCREENSHOTS-9D | Screenshot folder and naming convention `MAN-xx_<short-description>.png` for the manual test evidence; no passwords or session ids visible | [screenshots folder](evidence/screenshots/.gitkeep) | None | not applicable | Folder prepared; no screenshots yet |
