@@ -260,3 +260,11 @@ All Phase 5 evidence requirements (Groups A through G) verified. Phase 6 cryptog
 |---|---|---|---|---|---|
 | MAN-GUIDE-9D | Step-by-step manual browser tests (MAN-01..MAN-57: login/logout, cookie flags, session cap, headers, case workflow, evidence, reports, auditor pages, error and 429 pages, accessibility) with blank result, screenshot and defect tables; written from the code, not executed by the author | [manual-browser-tests.md](assurance/manual-browser-tests.md) | None (human-run); related automated ids are named per row | not applicable | Draft; results pending (tester) |
 | MAN-SCREENSHOTS-9D | Screenshot folder and naming convention `MAN-xx_<short-description>.png` for the manual test evidence; no passwords or session ids visible | [screenshots folder](evidence/screenshots/.gitkeep) | None | not applicable | Folder prepared; no screenshots yet |
+
+## Phase 9E: documentation corrections and local-only demo data (DRAFT)
+
+| Requirement ID | Description | Source / Config | Automated Test / Gate | CI Verification | Status |
+|---|---|---|---|---|---|
+| DEMO-LOCAL (SR-02, FR-14) | Local profile creates a second client organisation, user and DEMO case, and a second administrator, with random passwords handled like the bootstrap accounts; tenant isolation (404, audited once) and two-administrator behaviour can be shown in a browser | [DataBootstrapService.java](../src/main/java/com/casevault/bootstrap/DataBootstrapService.java), [ADR 0008](adr/0008-local-demo-data.md) | DEMO-LOCAL-01..04 (`DemoDataLocalProfileTest`) | CI `build-test-coverage` | Verified locally |
+| DEMO-ABSENT (SR-16) | Default and prod-like profiles never create demo data | [DataBootstrapService.java](../src/main/java/com/casevault/bootstrap/DataBootstrapService.java) | DEMO-ABSENT-01..02 (`DemoDataAbsentTest`); unchanged DataBootstrapSecurityTest, BootstrapProdProfileSecurityTest, ProfileConfigurationSecurityTest | CI `build-test-coverage` | Verified locally |
+| DOC-DRIFT-9E | README run command; CSP nonce claims corrected (README, architecture, threat model, misuse cases, SECURITY, trivy, requirements clarification); session cap in admin-tests; finding F-012 recorded | [README.md](../README.md), [findings-log.md](assurance/findings-log.md) | None (documentation) | not applicable | Draft |

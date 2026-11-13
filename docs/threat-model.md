@@ -47,7 +47,7 @@ The system comprises:
 [ Ingress / TLS Reverse Proxy / Gateway ]
 ====================== Trust Boundary 2 (TB-2: Application Perimeter) ====================
 [ CaseVault Spring Boot Application Runtime (JVM) ]
-  ├── Web Security Filter Chain (Authentication, Nonce, CSP, Session Fixation)
+  ├── Web Security Filter Chain (Authentication, CSP and other headers, Session Fixation)
   ├── Service Layer (AccessPolicy, Tenancy Validation, Four-Eyes Rule)
   └── Cryptographic Subsystem (Google Tink Envelope Encryption, HMAC Chaining)
 ====================== Trust Boundary 3 (TB-3: Data Storage & Persistence) ==============
@@ -126,7 +126,7 @@ The system comprises:
 - **Risk Rating**: **High (CVSS 8.6)**
 - **Controls**:
   - Thymeleaf `th:text` (contextual HTML encoding) strictly enforced; `th:utext` prohibited.
-  - Strict Content Security Policy with nonces.
+  - Strict Content Security Policy (two headers, `script-src 'self'`, no nonce; templates contain no inline script).
   - Parameterised JPA queries and SQL `LIKE` wildcard escaping (`%`, `_`).
 - **Standards Mapping**:
   - OWASP Top 10:2025: A03 (Injection) [VERIFY MANUALLY] / A03:2021
@@ -265,7 +265,7 @@ flowchart TD
 | **P1** | Cryptographic Protection | Argon2id password hashing (64MB, 3 iter), Google Tink envelope encryption at rest | 4, 6, 10 |
 | **P1** | File Upload Hardening | Apache Tika magic-byte inspection, blocked executable/SVG formats, synthetic test fixtures | 5 |
 | **P2** | Audit Integrity & Traceability | JDK HMAC-SHA256 chaining, exclusive append lock, deterministic verification | 8, 11 |
-| **P2** | Injection Defense | Thymeleaf context encoding (`th:text`), strict CSP nonce, JPA parameterisation | 4, 10 |
+| **P2** | Injection Defense | Thymeleaf context encoding (`th:text`), strict CSP (`script-src 'self'`), JPA parameterisation | 4, 10 |
 | **P2** | Account Protection | Lockout after 5 failures, timing equalization, SameSite=Strict cookies | 2, 10 |
 | **P3** | Safe Error Handling | Global exception interceptor, UUID correlation IDs, zero stack traces | 9 |
 | **P3** | Supply Chain & Build Security | CycloneDX SBOM, Trivy vulnerability gating, non-root Docker execution | 7, 18 |

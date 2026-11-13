@@ -18,6 +18,6 @@ Do NOT open public GitHub issues for security vulnerabilities.
 
 ## Security Controls Overview
 - Server-side validation and authorization on every endpoint.
-- Per-request CSP nonce, `nosniff`, `frame-ancestors 'none'`, and secure cookie flags.
+- Content Security Policy (two headers, `script-src 'self'`, no nonce), `nosniff`, `frame-ancestors 'none'`, and secure cookie flags.
 - Cryptographic integrity verification via HMAC-SHA256 audit chaining.
 - Safe error handling with correlated UUID identifiers.

@@ -37,3 +37,5 @@ This document transparently tracks all AI tooling and assistant usage during the
 - 2026-11-13: Assisted with Phase 9C accessibility fixes (finding F-011): AA colour contrast, :focus-visible, login main, heading levels, table caption, aria-current, per-row accessible names; new tests UI-A11Y-CONTRAST, FOCUS, STRUCT, NAV, ACTIONS; verified via mvnw verify in two run orders. [DRAFT]
 
 - 2026-11-13: Assisted with Phase 9D manual browser test guide (docs/assurance/manual-browser-tests.md, 57 cases MAN-01..MAN-57, blank result tables, screenshot convention); documentation only, written from code and config, nothing executed by the assistant. [DRAFT]
+
+- 2026-11-13: Assisted with Phase 9E: documentation drift fixes (README run command, CSP nonce claims, session cap text), finding F-012 (not fixed), local-profile-only demo data in DataBootstrapService (second client organisation, user, DEMO case, second administrator; random passwords), honouring casevault.bootstrap.credentials-dir, tests DEMO-LOCAL-01..04 and DEMO-ABSENT-01..02, ADR 0008; verified via mvnw verify in two run orders. [DRAFT]

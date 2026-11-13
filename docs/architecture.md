@@ -19,7 +19,7 @@ flowchart TD
 
     subgraph AppZone["CaseVault Application Runtime (Trusted Boundary)"]
         direction TB
-        SecurityFilter["Spring Security Filter Chain (CSP Nonce, Headers, Session Management)"]
+        SecurityFilter["Spring Security Filter Chain (Headers incl. two CSP headers, Session Management)"]
         WebControllers["Web and REST Controllers (Thymeleaf Controllers, API Endpoints)"]
         AccessPolicy["Central Access Policy and Authorization Engine"]
         DomainServices["Domain Services (CaseService, EvidenceService, ReportService, AuditService)"]
@@ -61,7 +61,7 @@ flowchart TD
 
 ### 3.1 Web & Presentation Tier
 - **Thymeleaf Engine**: Server-rendered HTML utilizing strict contextual escaping (`th:text`). Prohibits raw unescaped fragments (`th:utext`) and direct DOM manipulation.
-- **Security Headers & CSP**: Injects dynamic nonces into each request, emitting strict `Content-Security-Policy`, `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, and `Permissions-Policy`.
+- **Security Headers & CSP**: Emits the strict `Content-Security-Policy` as two headers (`script-src 'self'`, no nonce, no inline script or style allowed), `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, and `Permissions-Policy`.
 - **Session Management**: Server-side HTTP sessions with session cookie flags (`HttpOnly`, `SameSite=Strict`, `Secure`). Session ID rotates upon login.
 
 ### 3.2 Service & Access Control Tier
