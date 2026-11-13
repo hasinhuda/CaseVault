@@ -243,6 +243,7 @@ The system supports four distinct operational roles with strict separation of du
 - **Rationale**: Restricts container breakout capabilities and reduces Linux host attack surface.
 - **Verification Method**: Hadolint Dockerfile linting and Trivy container scan.
 - **Implementation note (docs honesty fix):** built: multi-stage `Dockerfile`, digest-pinned base images, `USER 10001:10001`, OS package upgrade; Hadolint and Trivy run in CI. **TARGET (not built in this submission):** read-only root filesystem, dropped capabilities and resource limits (no compose or runtime configuration exists).
+- **Implementation note (Phase 12B, 2026-11-13):** `deploy/compose.yaml` now sets a read-only root filesystem, `cap_drop: ALL`, `no-new-privileges`, memory and process limits for all three containers; confirmed with `docker inspect` (`docs/evidence/deploy/02-inspect.txt`, interpretation in `docs/assurance/deployment-hardening.md`). Not verified: an image scan of the compose images and behaviour on a Linux host.
 - **Standards Mapping**: CWE-250, OWASP Top 10:2025 A05 [VERIFY MANUALLY] / A05:2021, ASVS 5.0 V14.3 [VERIFY MANUALLY].
 
 ### SR-19: Synthetic Data & Antivirus Stub Isolation

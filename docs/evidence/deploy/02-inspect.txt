@@ -1,0 +1,83 @@
+# docker inspect (hardening settings; no environment values are shown)
+
+## cvr-db
+Image             : postgres:16-alpine@sha256:f377d590e5474681d4d7838635031a2b50647923b7abfa803ce9b5ff35d5c663
+User              : 70:70
+ReadonlyRootfs    : True
+CapDrop           : ALL
+CapAdd            : (none)
+SecurityOpt       : no-new-privileges:true
+Memory (bytes)    : 268435456  MemorySwap: 268435456  PidsLimit: 100
+Privileged        : False  NetworkMode: casevault-rebuild_cvr_data
+Published ports   : {}
+Networks          : casevault-rebuild_cvr_data
+Health            : healthy
+Mount             : bind db_password.txt -> /run/secrets/postgres_password rw=False
+Mount             : volume cvr_pgdata -> /var/lib/postgresql/data rw=True
+Tmpfs             : {"/tmp":"rw,noexec,nosuid,size=16m","/var/run/postgresql":"rw,noexec,nosuid,size=1m,uid=70,gid=70"}
+
+## cvr-app
+Image             : cvr-app:dev
+User              : 10001:10001
+ReadonlyRootfs    : True
+CapDrop           : ALL
+CapAdd            : (none)
+SecurityOpt       : no-new-privileges:true
+Memory (bytes)    : 671088640  MemorySwap: 671088640  PidsLimit: 200
+Privileged        : False  NetworkMode: casevault-rebuild_cvr_data
+Published ports   : {}
+Networks          : casevault-rebuild_cvr_data, casevault-rebuild_cvr_edge
+Health            : healthy
+Mount             : volume cvr_evidence -> /data/evidence rw=True
+Mount             : volume cvr_firstrun -> /data/firstrun rw=True
+Mount             : volume cvr_keys -> /data/keys rw=True
+Mount             : bind db_password.txt -> /run/secrets/spring.datasource.password rw=False
+Tmpfs             : {"/tmp":"rw,noexec,nosuid,size=128m"}
+
+## cvr-nginx
+Image             : nginx:stable-alpine@sha256:901e593c95dc85f5a729f5765516321366ef4ac401821431d408897e95287d0a
+User              : 101:101
+ReadonlyRootfs    : True
+CapDrop           : ALL
+CapAdd            : (none)
+SecurityOpt       : no-new-privileges:true
+Memory (bytes)    : 67108864  MemorySwap: 67108864  PidsLimit: 50
+Privileged        : False  NetworkMode: casevault-rebuild_cvr_edge
+Published ports   : {"8443/tcp":[{"HostIp":"127.0.0.1","HostPort":"8443"}]}
+Networks          : casevault-rebuild_cvr_edge
+Health            : healthy
+Mount             : bind error_pages -> /etc/nginx/error_pages rw=False
+Mount             : bind nginx.conf -> /etc/nginx/nginx.conf rw=False
+Mount             : bind proxy_params.conf -> /etc/nginx/proxy_params.conf rw=False
+Mount             : bind tls.crt -> /run/secrets/tls.crt rw=False
+Mount             : bind tls.key -> /run/secrets/tls.key rw=False
+Tmpfs             : {"/tmp":"rw,noexec,nosuid,size=16m"}
+
+## process user inside the containers
+cvr-app : uid=10001(casevault) gid=10001(casevault) groups=10001(casevault)
+cvr-nginx : uid=101(nginx) gid=101(nginx) groups=101(nginx)
+cvr-db : uid=70(postgres) gid=70(postgres) groups=70(postgres)
+
+## docker stats (memory use against the limit)
+NAME        MEM USAGE / LIMIT   MEM %     PIDS
+cvr-db      45.01MiB / 256MiB   17.58%    16
+cvr-app     369.9MiB / 640MiB   57.79%    31
+cvr-nginx   3.285MiB / 64MiB    5.13%     2
+
+## JAVA_TOOL_OPTIONS and profile of cvr-app (the database password is NOT among the environment variables)
+CASEVAULT_STORAGE_EVIDENCE_DIR=/data/evidence
+CASEVAULT_AUDIT_KEY_PATH=/data/keys/audit-hmac.key
+POSTGRES_USER=casevault
+JAVA_TOOL_OPTIONS=-Xmx384m
+CASEVAULT_STORAGE_KEYSET_PATH=/data/keys/evidence-keyset.json
+SPRING_PROFILES_ACTIVE=prod-like
+POSTGRES_HOST=cvr-db
+POSTGRES_PORT=5432
+POSTGRES_DB=casevault
+CASEVAULT_BOOTSTRAP_INITIAL_CREDENTIALS_FILE=/data/firstrun/initial-credentials.txt
+CASEVAULT_BOOTSTRAP_INITIAL_ACCOUNTS_ENABLED=true
+database password in the environment of cvr-app: False
+
+## secret files mounted in cvr-app (names and sizes only)
+total 0
+-rwxrwxrwx 1 root root 33 Nov 13 15:18 spring.datasource.password

@@ -256,3 +256,22 @@ Rubric weights: requirements/architecture 15%, implementation 20%, assurance 20%
 ## 4. Commands run and results
 
 See the table at the top of this document. In addition: file reads of `ci.yml`, `Dockerfile`, `.trivyignore`, `.zap/rules.tsv`, `pom.xml`, the `application*.properties`, `DataBootstrapService`, `AccessPolicy`, `EvidenceValidator`, `DefaultReportService`, `DefaultAdminUserService`, `GlobalExceptionHandler`, `SecurityConfig` and the documents named above. Things I could not do: view GitHub Actions results or repository variables, confirm repository visibility, run the application in a browser, run DAST or any Docker start/stop command.
+
+---
+
+## Addendum 2026-11-13 (Phase 12B): what changed since this audit
+
+The audit text and the scorecard above are the state of that morning and were **not** rewritten. Changes proven by a real run of the Docker stack (evidence in `docs/evidence/deploy/`, interpretation in `deployment-hardening.md`):
+
+| Item | At audit time | Now |
+|---|---|---|
+| B7a / D13c / D13d (nginx, TLS) | NOT DONE | Built and run in the Docker stack: nginx with TLS 1.2/1.3 (TLS 1.3 negotiated), self-signed certificate; **PARTIAL** because the certificate is self-signed, there is no TLS to the application and it was not checked in a browser |
+| D13b (docker-compose) | NOT DONE | Built: `deploy/compose.yaml` and `deploy/compose.first-run.yaml`, run on one machine |
+| D13e (read-only root filesystem), D13f (capabilities) | NOT DONE | Built and confirmed with `docker inspect` for all three containers |
+| D13a (Dockerfile) | PARTIAL, no `HEALTHCHECK` | `HEALTHCHECK` added; `/data` directories for a read-only root filesystem |
+| B14 (platform hardening), D12/G12 (hardened Docker + nginx TLS) | PARTIAL / NOT DONE | PARTIAL: hardening built and run; runbooks, backup/restore and rollback are still **NOT DONE** |
+| B9 (default database password) | PARTIAL | Default removed (Phase 12A), secret file proven with a real PostgreSQL |
+| D14c-e (runbooks, backup/restore, rollback) | NOT DONE | Unchanged: **NOT DONE** (start/stop/first-run steps are scripted; nothing for backup, restore or rollback) |
+| D4, D7, D10, F3 (code review, DAST results, manual tests executed, tag) | NOT DONE / PARTIAL | Unchanged |
+
+Not verified in Phase 12B: Trivy and Hadolint on the compose images, a browser through nginx, load behaviour, a Linux host.

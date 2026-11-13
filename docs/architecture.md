@@ -7,7 +7,7 @@ CaseVault is structured as a modular layered monolith built on Java 21 LTS and S
 
 ## 2. Component Architecture & Trust Boundaries
 
-> **As built vs target.** Built: browser to application over plain HTTP, the Spring Security filter chain, controllers, access policy, services, Argon2id / Tink / HMAC, PostgreSQL (prod-like profile; the default and local profiles use in-memory H2), encrypted evidence files and a file-based key store. **TARGET (not built in this submission):** the "Reverse Proxy or TLS Termination Gateway" node and the HTTPS hop in front of it. There is no TLS configuration, nginx or compose file in the repository. See [known-limitations.md](assurance/known-limitations.md).
+> **As built vs target.** Built: browser to application over plain HTTP, the Spring Security filter chain, controllers, access policy, services, Argon2id / Tink / HMAC, PostgreSQL (prod-like profile; the default and local profiles use in-memory H2), encrypted evidence files and a file-based key store. **Built in Phase 12B (Docker stack only):** the nginx reverse proxy with TLS 1.2/1.3 in `deploy/compose.yaml` (a self-signed localhost certificate; evidence `docs/evidence/deploy/05-tls.txt`, interpretation `docs/assurance/deployment-hardening.md`). The `local` and default profiles still serve plain HTTP, and between nginx and the application the traffic is plain HTTP on an internal network. Still TARGET (not built): a certificate from a certificate authority and TLS between nginx and the application. See [known-limitations.md](assurance/known-limitations.md).
 
 ```mermaid
 flowchart TD
@@ -16,7 +16,7 @@ flowchart TD
     end
 
     subgraph PerimeterZone["Perimeter and Transport Zone (TLS Boundary)"]
-        Ingress["Reverse Proxy or TLS Termination Gateway - TARGET (not built)"]
+        Ingress["Reverse Proxy and TLS Termination (nginx, deploy/compose.yaml)"]
     end
 
     subgraph AppZone["CaseVault Application Runtime (Trusted Boundary)"]
@@ -35,7 +35,7 @@ flowchart TD
         KeyStore[("Local Key Store (.local-data/ or secrets/ - Git Ignored)")]
     end
 
-    Browser -->|HTTPS target only| Ingress
+    Browser -->|HTTPS 8443, TLS 1.2 or 1.3| Ingress
     Ingress -->|Forwarded HTTP Request| SecurityFilter
     SecurityFilter -->|Authenticated Principal| WebControllers
     WebControllers -->|DTO Request| AccessPolicy

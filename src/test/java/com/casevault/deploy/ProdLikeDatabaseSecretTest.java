@@ -60,6 +60,14 @@ class ProdLikeDatabaseSecretTest {
     }
 
     @Test
+    @DisplayName("DEPLOY-SECRET-05: the prod-like profile names the PostgreSQL driver (the base file sets the H2 driver; without this override the real stack cannot start)")
+    void profileNamesThePostgresqlDriver() throws IOException {
+        String file = Files.readString(Path.of("src/main/resources/application-prod-like.properties"));
+        assertTrue(file.contains("spring.datasource.driverClassName=org.postgresql.Driver"));
+        assertTrue(file.indexOf("spring.datasource.driverClassName=org.postgresql.Driver") < file.indexOf("spring.datasource.url="));
+    }
+
+    @Test
     @DisplayName("DEPLOY-SECRET-04: the profile file contains no default password and states that TLS is not terminated by the application")
     void profileFileHasNoDefaultPassword() throws IOException {
         String file = Files.readString(Path.of("src/main/resources/application-prod-like.properties"));

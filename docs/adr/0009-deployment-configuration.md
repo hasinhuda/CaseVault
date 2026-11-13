@@ -25,3 +25,10 @@ The prod-like profile had a default database password, a comment that claimed TL
 - Compose (Phase 12B) must publish only the proxy, mount the secret as `spring.datasource.password`, set `SPRING_PROFILES_ACTIVE=prod-like`, and the proxy must set the headers and overwrite `X-Forwarded-For` with `$remote_addr`.
 - Environment variable names proven by `DeploymentEnvironmentNamesTest`: `CASEVAULT_BOOTSTRAP_INITIAL_ACCOUNTS_ENABLED`, `CASEVAULT_BOOTSTRAP_INITIAL_CREDENTIALS_FILE`, `POSTGRES_PASSWORD`, `SPRING_DATASOURCE_PASSWORD`, `SPRING_PROFILES_ACTIVE`.
 - Related findings: F-014, F-015, F-016 (`docs/assurance/findings-log.md`).
+
+## Update (Phase 12B, 2026-11-13)
+
+- The compose stack exists (`deploy/compose.yaml`, `deploy/compose.first-run.yaml`, nginx configuration under `deploy/nginx/`) and was run; evidence is in `docs/evidence/deploy/`, interpretation in `docs/assurance/deployment-hardening.md`.
+- `curl` is part of the runtime image, so the `HEALTHCHECK` is in the `Dockerfile` (`curl -fsS http://127.0.0.1:8080/actuator/health`); the earlier "UNCONFIRMED" is resolved.
+- Running the real stack found that the prod-like profile did not name the PostgreSQL driver (F-017); fixed and guarded by DEPLOY-SECRET-05.
+- The secret `spring.datasource.password` is a file with a trailing line feed; both PostgreSQL and the application accept it (B7a in the hardening document).

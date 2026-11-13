@@ -1,0 +1,15 @@
+# reachability from the host 2026-11-13T21:33:10
+https://localhost:8443/login -> HTTP 200 (certificate not verified: self-signed, curl -k)
+login page title: CaseVault - Secure Login
+login form present: True
+
+plain HTTP on the application port 8080 (http://localhost:8080/login): curl exit 7, curl: (7) Failed to connect to localhost:8080 after 1 ms: Could not connect to server
+application health on port 8080 (http://localhost:8080/actuator/health): curl exit 7, curl: (7) Failed to connect to localhost:8080 after 1 ms: Could not connect to server
+TCP connect 127.0.0.1:5432 from the host: not reachable (expected)
+TCP connect 127.0.0.1:8080 from the host: not reachable (expected)
+docker port cvr-db  : "" (empty = nothing published)
+docker port cvr-app : "" (empty = nothing published)
+docker port cvr-nginx: 8443/tcp -> 127.0.0.1:8443
+
+GET /actuator/health through nginx: {"status":"UP"}
+GET /actuator/info through nginx: HTTP 404 (blocked at the proxy)

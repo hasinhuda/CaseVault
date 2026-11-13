@@ -6,6 +6,9 @@ WORKDIR /workspace
 COPY pom.xml mvnw ./
 COPY .mvn .mvn
 
+# A Windows checkout may have CRLF line endings in mvnw (shell error 127); make the script runnable either way
+RUN sed -i 's/\r$//' mvnw && chmod +x mvnw
+
 # Download dependencies offline
 RUN ./mvnw dependency:go-offline -B
 
@@ -29,10 +32,21 @@ RUN groupadd -g 10001 casevault && \
     useradd -u 10001 -g casevault -s /bin/false -M -d /app casevault && \
     chown -R casevault:casevault /app
 
+# Writable data directories for a read-only root filesystem (Phase 12B): evidence, keys, one-time credentials.
+# A named volume mounted over an empty directory inherits its ownership, so the non-root user can write there.
+RUN mkdir -p /data/evidence /data/keys /data/firstrun && \
+    chown -R casevault:casevault /data && \
+    chmod 700 /data/evidence /data/keys /data/firstrun
+
 COPY --from=builder --chown=casevault:casevault /workspace/target/casevault-0.0.1-SNAPSHOT.jar /app/app.jar
 
 USER 10001:10001
 
 EXPOSE 8080
+
+# Unauthenticated liveness URL (docs/adr/0009-deployment-configuration.md): 200 {"status":"UP"}, no details.
+# curl is already part of the runtime image; no package is added for this.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
+    CMD curl -fsS http://127.0.0.1:8080/actuator/health || exit 1
 
 ENTRYPOINT ["java", "-Djava.security.egd=file:/dev/./urandom", "-jar", "/app/app.jar"]

@@ -1,0 +1,21 @@
+# rate limit through nginx: spoofed X-Forwarded-For 2026-11-13T21:34:45
+the application allows 10 login POSTs per minute per client address; nginx OVERWRITES X-Forwarded-For with the address it saw.
+host client, unknown user, a DIFFERENT spoofed X-Forwarded-For on every attempt:
+attempt 1 (spoofed 203.0.113.1): 302 https://localhost:8443/login?error=true
+attempt 2 (spoofed 203.0.113.2): 302 https://localhost:8443/login?error=true
+attempt 3 (spoofed 203.0.113.3): 302 https://localhost:8443/login?error=true
+attempt 4 (spoofed 203.0.113.4): 302 https://localhost:8443/login?error=true
+attempt 5 (spoofed 203.0.113.5): 302 https://localhost:8443/login?error=true
+attempt 6 (spoofed 203.0.113.6): 302 https://localhost:8443/login?error=true
+attempt 7 (spoofed 203.0.113.7): 302 https://localhost:8443/login?error=true
+attempt 8 (spoofed 203.0.113.8): 302 https://localhost:8443/login?error=true
+attempt 9 (spoofed 203.0.113.9): 302 https://localhost:8443/login?error=true
+attempt 10 (spoofed 203.0.113.10): 302 https://localhost:8443/login?error=true
+attempt 11 (spoofed 203.0.113.11): 429
+attempt 12 (spoofed 203.0.113.12): 429
+
+a second client with a DIFFERENT source address (a throw-away container on the internal edge network, image cvr-app:dev), claiming the same spoofed address as the blocked host client:
+302 https://cvr-nginx:8443/login?error=true
+
+host client again right after the block (still limited):
+429
