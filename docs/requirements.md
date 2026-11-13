@@ -125,6 +125,7 @@ The system supports four distinct operational roles with strict separation of du
 - **Rationale**: Ensures operational visibility into system availability while guarding infrastructure secrets.
 - **Verification Method**: Actuator endpoint integration tests verifying HTTP 200 on `/actuator/health` and denial of unauthenticated access to sensitive actuator endpoints.
 - **Standards Mapping**: CWE-200, OWASP Top 10:2025 A05 [VERIFY MANUALLY] / A05:2021, ASVS 5.0 V14.4 [VERIFY MANUALLY].
+- **Clarification (Phase 9E, as built; the text above is kept as history):** the application sends the CSP as two headers (`default-src 'self'; frame-ancestors 'none'; object-src 'none'` and `base-uri 'self'; form-action 'self'; script-src 'self'; style-src 'self'`). It does **not** use per-request nonces: no template has an inline script or style, so `script-src 'self'` is sufficient and stricter than a nonce policy that would allow inline code. See [headers-and-rate-limit.md](assurance/headers-and-rate-limit.md).
 
 ---
 
@@ -184,6 +185,7 @@ The system supports four distinct operational roles with strict separation of du
 - **Rationale**: Defense-in-depth against XSS execution, clickjacking, MIME confusion, and unauthorized browser feature abuse.
 - **Verification Method**: Integration test `TEST-BASE-002` verifying HTTP headers across public and protected endpoints.
 - **Standards Mapping**: CWE-1021, CWE-693, OWASP Top 10:2025 A05 [VERIFY MANUALLY] / A05:2021, ASVS 5.0 V14.4 [VERIFY MANUALLY].
+- **Clarification (Phase 9E, as built; the text above is kept as history):** the application sends the CSP as two headers (`default-src 'self'; frame-ancestors 'none'; object-src 'none'` and `base-uri 'self'; form-action 'self'; script-src 'self'; style-src 'self'`). It does **not** use per-request nonces: no template has an inline script or style, so `script-src 'self'` is sufficient and stricter than a nonce policy that would allow inline code. See [headers-and-rate-limit.md](assurance/headers-and-rate-limit.md).
 
 ### SR-10: Parameterised Queries & Wildcard Escaping (SQLi Prevention)
 - **Description**: All database queries must use Spring Data JPA parameterised queries or prepared statements. Dynamic search queries must escape SQL `LIKE` wildcard meta-characters (`%`, `_`, `\`).

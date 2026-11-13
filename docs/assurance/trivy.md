@@ -119,7 +119,7 @@ Specifically, Trivy cannot detect:
 2. **Broken Object Property Level Authorization (BOPLA)**: Updating unpermitted fields (e.g., client users attempting to self-assign cases or approve reports).
 3. **Cross-Tenant Isolation Breaches**: Queries failing to enforce tenant filters or returning `403` instead of the required `404` for unauthorized cross-tenant objects.
 4. **Business Logic & Workflow Flaws**: Circumvention of multi-step approval workflows (such as a Manager approving their own report draft, or unauthorized status transitions).
-5. **Session & Cookie Misconfigurations at Runtime**: Absence of dynamic cryptographic nonces in Content Security Policy headers or missing `HttpOnly`/`SameSite=Strict`/`Secure` flags in production deployments.
+5. **Session & Cookie Misconfigurations at Runtime**: A weakened Content Security Policy (for example `unsafe-inline`) or missing `HttpOnly`/`SameSite=Strict`/`Secure` flags in production deployments.
 6. **Audit Trail Tampering or Concurrency Gaps**: Broken HMAC chains, race conditions during audit record appending, or uncommitted transactions holding append locks.
 
 These risks must be covered by dedicated unit/integration tests (`HealthEndpointTest`, `ArchitectureTest`, `CaseVaultApplicationTests`, with role-based access control tests planned for a later phase), SpotBugs/FindSecBugs AST analysis, and security code reviews.

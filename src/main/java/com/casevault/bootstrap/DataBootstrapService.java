@@ -1,8 +1,10 @@
 package com.casevault.bootstrap;
 
+import com.casevault.model.Case;
 import com.casevault.model.Organisation;
 import com.casevault.model.Role;
 import com.casevault.model.User;
+import com.casevault.repository.CaseRepository;
 import com.casevault.repository.OrganisationRepository;
 import com.casevault.repository.UserRepository;
 import com.casevault.security.PasswordPolicyValidator;
@@ -19,9 +21,10 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.security.SecureRandom;
 import java.time.Instant;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.UUID;
 
 @Component
@@ -39,18 +42,21 @@ public class DataBootstrapService implements ApplicationRunner {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final org.springframework.core.env.Environment environment;
+    private final CaseRepository caseRepository;
 
     @Value("${casevault.bootstrap.credentials-dir:.local-data}")
-    private String credentialsDir;
+    private Path credentialsDir;
 
     public DataBootstrapService(OrganisationRepository organisationRepository,
                                 UserRepository userRepository,
                                 PasswordEncoder passwordEncoder,
-                                org.springframework.core.env.Environment environment) {
+                                org.springframework.core.env.Environment environment,
+                                CaseRepository caseRepository) {
         this.organisationRepository = organisationRepository;
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.environment = environment;
+        this.caseRepository = caseRepository;
     }
 
     @Override
@@ -145,9 +151,32 @@ public class DataBootstrapService implements ApplicationRunner {
 
         // 4. Save and print credentials ONLY in the "local" profile; silent in test and disabled in prod-like
         if (environment.matchesProfiles("local")) {
-            saveCredentialsToLocalFile(adminPassword, managerPassword, analystPassword, clientPassword);
-            printBootstrapConsoleBanner(adminPassword, managerPassword, analystPassword, clientPassword);
+            // Phase 9E: demo data for browser tests (tenant isolation, two administrators). Created in the same
+            // first-run pass, under the same guards (not prod-like, no users yet), only in the local profile, and
+            // with random passwords handled exactly like the four accounts above.
+            Map<String, String> demoCredentials = createLocalDemoData(now);
+            saveCredentialsToLocalFile(adminPassword, managerPassword, analystPassword, clientPassword, demoCredentials);
+            printBootstrapConsoleBanner(adminPassword, managerPassword, analystPassword, clientPassword, demoCredentials);
         }
+    }
+
+    /** DEMO data (synthetic): a second client organisation with a user and a case, and a second administrator. */
+    private Map<String, String> createLocalDemoData(Instant now) {
+        Organisation demoOrg = organisationRepository.findByCode("ORG_DEMO_B")
+                .orElseGet(() -> organisationRepository.save(new Organisation(
+                        UUID.randomUUID().toString(), "Demo Client Org B", "ORG_DEMO_B", now)));
+        String demoClientPassword = generateSecurePassword(18);
+        String demoAdminPassword = generateSecurePassword(18);
+        User demoClient = userRepository.save(new User(UUID.randomUUID().toString(), demoOrg, "demo_client_b",
+                passwordEncoder.encode(demoClientPassword), Role.CLIENT, "demo.client.b@demo.local", true, now));
+        userRepository.save(new User(UUID.randomUUID().toString(), null, "demo_admin_2",
+                passwordEncoder.encode(demoAdminPassword), Role.AUDITOR_ADMIN, "demo.admin.2@demo.local", true, now));
+        caseRepository.save(new Case(UUID.randomUUID().toString(), demoOrg,
+                "DEMO case of Demo Client Org B (synthetic demo data)", "OTHER", "LOW", "OPEN", demoClient, null, now));
+        Map<String, String> credentials = new LinkedHashMap<>();
+        credentials.put("demo_client_b", demoClientPassword);
+        credentials.put("demo_admin_2", demoAdminPassword);
+        return credentials;
     }
 
     public static String generateSecurePassword(int length) {
@@ -179,10 +208,12 @@ public class DataBootstrapService implements ApplicationRunner {
         return password;
     }
 
-    private void saveCredentialsToLocalFile(String adminPw, String managerPw, String analystPw, String clientPw) {
+    private void saveCredentialsToLocalFile(String adminPw, String managerPw, String analystPw, String clientPw,
+                                            Map<String, String> demoCredentials) {
         try {
-            Path baseDir = Paths.get(".").toAbsolutePath().normalize();
-            Path dir = baseDir.resolve(".local-data").normalize();
+            // Phase 9E: honour casevault.bootstrap.credentials-dir (default .local-data, so nothing changes for the
+            // normal local start). Before this, the property was read but ignored, and tests overwrote the real file.
+            Path dir = credentialsDir.toAbsolutePath().normalize();
             if (!Files.exists(dir)) {
                 Files.createDirectories(dir);
             }
@@ -197,6 +228,8 @@ public class DataBootstrapService implements ApplicationRunner {
             sb.append("manager_alice=").append(managerPw).append("\n");
             sb.append("analyst_bob=").append(analystPw).append("\n");
             sb.append("client_charlie=").append(clientPw).append("\n");
+            sb.append("\n# DEMO accounts (local profile only)\n");
+            demoCredentials.forEach((name, pw) -> sb.append(name).append('=').append(pw).append("\n"));
 
             Files.writeString(credFile, sb.toString(), StandardCharsets.UTF_8);
             logger.info("Saved first-run synthetic credentials to secure local storage");
@@ -205,7 +238,8 @@ public class DataBootstrapService implements ApplicationRunner {
         }
     }
 
-    private void printBootstrapConsoleBanner(String adminPw, String managerPw, String analystPw, String clientPw) {
+    private void printBootstrapConsoleBanner(String adminPw, String managerPw, String analystPw, String clientPw,
+                                             Map<String, String> demoCredentials) {
         System.out.println("\n================================================================================");
         System.out.println("  [CASEVAULT FIRST-RUN BOOTSTRAP] Initial Credentials Generated");
         System.out.println("--------------------------------------------------------------------------------");
@@ -213,6 +247,10 @@ public class DataBootstrapService implements ApplicationRunner {
         System.out.println("  Role: MANAGER       | Username: manager_alice  | Password: " + managerPw);
         System.out.println("  Role: ANALYST       | Username: analyst_bob    | Password: " + analystPw);
         System.out.println("  Role: CLIENT        | Username: client_charlie | Password: " + clientPw);
+        System.out.println("--------------------------------------------------------------------------------");
+        System.out.println("  DEMO DATA (local profile only)");
+        System.out.println("  Role: CLIENT (Demo Client Org B) | Username: demo_client_b | Password: " + demoCredentials.get("demo_client_b"));
+        System.out.println("  Role: AUDITOR_ADMIN (second)     | Username: demo_admin_2  | Password: " + demoCredentials.get("demo_admin_2"));
         System.out.println("================================================================================\n");
     }
 }

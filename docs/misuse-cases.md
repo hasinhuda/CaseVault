@@ -11,7 +11,7 @@ Misuse cases model interactions from the perspective of an adversary or maliciou
 | **MUC-01** | Cross-Tenant Data Access | Malicious Client / Competitor | Foreign Tenant Cases & Reports | Server-side `AccessPolicy` scoping + HTTP 404 masking (SR-01, SR-02) |
 | **MUC-02** | Privilege Escalation via Compromised Low-Privilege Account | Compromised Client Account | Case Assignment & Approval Endpoints | Method security `@PreAuthorize` + DTO strict validation (SR-01, SR-03) |
 | **MUC-03** | Insecure Direct Object Reference (ID Manipulation / BOLA) | Authenticated Attacker | Evidence Artifacts & Notes | Non-guessable UUIDs + DB tenant-bound joins (SR-01, SR-02) |
-| **MUC-04** | Injection Attacks in Notes, Search & Reports | Malicious Insider / Analyst | Browser Context & Database Engine | Strict `th:text` escaping, CSP nonce, JPA parameters (SR-08, SR-09, SR-10) |
+| **MUC-04** | Injection Attacks in Notes, Search & Reports | Malicious Insider / Analyst | Browser Context & Database Engine | Strict `th:text` escaping, CSP (`script-src 'self'`, no inline script), JPA parameters (SR-08, SR-09, SR-10) |
 | **MUC-05** | Disguised Malicious Binary / Web Shell Upload | External Threat Actor | Application Server & Filesystem | Apache Tika magic-byte inspection, blocked SVG/binaries, non-root (SR-11, SR-18) |
 | **MUC-06** | Credential & Secret Exposure | Host Intruder / Repository Snooper | Master Keys & Admin Credentials | Git-ignored `.local-data/`, Gitleaks CI, zero-secret policy (SR-16) |
 | **MUC-07** | Supply Chain Exploitation via Vulnerable Dependencies | Supply Chain Attacker | Application Runtime & Process | Maven Enforcer convergence, Trivy CI scanner, SBOM (SR-17) |
@@ -89,7 +89,7 @@ Misuse cases model interactions from the perspective of an adversary or maliciou
 - **System Impact**: Session hijacking of high-privilege accounts, DOM manipulation, unauthorized database exfiltration or denial-of-service.
 - **Defensive Countermeasures**:
   - Contextual HTML entity encoding (`th:text`) enforced across all Thymeleaf templates; `th:utext` strictly forbidden (SR-08).
-  - Strict Content Security Policy (`script-src 'self' 'nonce-...'`, `object-src 'none'`) blocks untrusted script execution (SR-09).
+  - Strict Content Security Policy (two headers; `script-src 'self'`, `object-src 'none'`; no nonce, templates have no inline script) blocks untrusted script execution (SR-09).
   - Parameterised Spring Data JPA queries eliminate SQL injection; wildcards in search terms are escaped (SR-10).
 - **Standards Mapping**:
   - OWASP Top 10:2025: A03 (Injection) [VERIFY MANUALLY] / A03:2021

@@ -11,7 +11,7 @@ CaseVault is a secure case-management and evidence-handling platform designed fo
   - `MANAGER`: Case assignment, status updates, report approval (four-eyes principle: cannot approve own reports).
   - `AUDITOR_ADMIN`: Security events, account activity, system health, account revocation. Strictly no access to case or evidence content.
 - **Defensive Engineering**:
-  - Strict Content Security Policy (CSP) with per-request nonce.
+  - Strict Content Security Policy (CSP) delivered as two headers (`default-src 'self'` and `script-src 'self'`, no `unsafe-inline`, no `unsafe-eval`). There is no per-request nonce: the templates contain no inline script or style, so none is needed.
   - Argon2id password hashing via Spring Security and BouncyCastle.
   - Google Tink envelope encryption at rest for sensitive evidence artifacts.
   - Cryptographic tamper-evident audit logging using JDK HMAC-SHA256 chains.
@@ -36,6 +36,16 @@ On Linux / macOS:
 ```bash
 ./mvnw -B verify
 ```
+
+## Running locally
+
+Start the application with the `local` profile (HTTP on port 8080, in-memory H2 database, session cookie without `Secure` so that it works over plain http):
+
+```powershell
+.\mvnw.cmd spring-boot:run "-Dspring-boot.run.profiles=local"
+```
+
+Then open `http://localhost:8080/login`. On every start the `local` profile creates synthetic accounts with **random passwords** (only in this profile) and prints them once in the console banner `[CASEVAULT FIRST-RUN BOOTSTRAP]`; they are also written to `.local-data/bootstrap-credentials.txt` (git-ignored). Besides the four normal accounts (`admin_auditor`, `manager_alice`, `analyst_bob`, `client_charlie`) the local profile creates DEMO data for browser tests: a second client organisation "Demo Client Org B" with the user `demo_client_b` and one DEMO case, and a second administrator `demo_admin_2`. The default and `prod-like` profiles never create demo data, and the `prod-like` profile creates no accounts at all. Stopping and starting the application resets the in-memory database (and generates new passwords). A step-by-step browser test guide is in [docs/assurance/manual-browser-tests.md](docs/assurance/manual-browser-tests.md).
 
 ## Documentation
 
