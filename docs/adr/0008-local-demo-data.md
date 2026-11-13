@@ -21,3 +21,5 @@ Browser tests need two things the four bootstrap accounts cannot show: tenant is
 ## Consequences
 - A test class that activates the `local` profile must use its own in-memory database so that demo data never lands in the database shared by the other test classes (done for `SessionCookieLocalHttpTest`).
 - The "last active administrator" message is still not reachable by one-step-at-a-time clicking, even with two administrators (the self-disable rule fires first); it remains covered by SEC-ADMIN-08.
+
+Related finding: F-013 (Phase 9E) - the bootstrap used to ignore `casevault.bootstrap.credentials-dir` and always wrote to `.local-data`; it is now honoured, see [findings-log.md](../assurance/findings-log.md).
