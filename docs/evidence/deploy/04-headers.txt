@@ -1,0 +1,39 @@
+# response headers of GET https://localhost:8443/login (through nginx)
+HTTP/1.1 200 
+Server: nginx
+Date: Fri, 13 Nov 2026 15:33:16 GMT
+Content-Type: text/html;charset=UTF-8
+Transfer-Encoding: chunked
+Connection: keep-alive
+X-Correlation-ID: ae401fdf-419a-4bd3-a66f-e0a20dd869ee
+Set-Cookie: JSESSIONID=<id>; Path=/; Secure; HttpOnly; SameSite=Strict
+X-Content-Type-Options: nosniff
+X-XSS-Protection: 0
+Cache-Control: no-cache, no-store, max-age=0, must-revalidate
+Pragma: no-cache
+Expires: 0
+Strict-Transport-Security: max-age=31536000 ; includeSubDomains
+X-Frame-Options: DENY
+Content-Security-Policy: default-src 'self'; frame-ancestors 'none'; object-src 'none'
+Referrer-Policy: strict-origin-when-cross-origin
+Permissions-Policy: camera=(), microphone=(), geolocation=()
+Cross-Origin-Opener-Policy: same-origin
+Cross-Origin-Resource-Policy: same-origin
+Content-Security-Policy: base-uri 'self'; form-action 'self'; script-src 'self'; style-src 'self'
+Content-Language: en-US
+
+Strict-Transport-Security      present x1
+Content-Security-Policy        present x2
+X-Content-Type-Options         present x1
+X-Frame-Options                present x1
+Referrer-Policy                present x1
+Permissions-Policy             present x1
+Cross-Origin-Opener-Policy     present x1
+Cross-Origin-Resource-Policy   present x1
+Cache-Control                  present x1
+X-Correlation-ID               present x1
+Server                         present x1
+Set-Cookie                     present x1
+session cookie flags: Secure=True HttpOnly=True SameSite=Strict=True
+Server header value contains a version number: False
+jsessionid in any header: False

@@ -1,0 +1,7 @@
+# docker ps (only cvr- containers) 2026-11-13T21:33:05
+NAMES       IMAGE                 STATUS                    PORTS
+cvr-nginx   nginx:stable-alpine   Up 6 seconds (healthy)    127.0.0.1:8443->8443/tcp
+cvr-app     cvr-app:dev           Up 28 seconds (healthy)   8080/tcp
+cvr-db      postgres:16-alpine    Up 34 seconds (healthy)   5432/tcp
+
+# every container on this machine whose name does not start with cvr- is not touched by these scripts

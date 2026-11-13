@@ -1,0 +1,44 @@
+# TLS negotiated with https://localhost:8443 (openssl s_client, OpenSSL 3.5.6 7 Apr 2026 (Library: OpenSSL 3.5.6 7 Apr 2026))
+
+## default (client offers 1.2 and 1.3)
+Protocol version: TLSv1.3
+Ciphersuite: TLS_AES_256_GCM_SHA384
+Peer certificate: CN=localhost
+Hash used: SHA256
+Signature type: ecdsa_secp256r1_sha256
+Verification error: self-signed certificate
+
+## forced TLS 1.3
+Protocol version: TLSv1.3
+Ciphersuite: TLS_AES_256_GCM_SHA384
+Peer certificate: CN=localhost
+Hash used: SHA256
+Signature type: ecdsa_secp256r1_sha256
+Verification error: self-signed certificate
+
+## forced TLS 1.2
+Protocol version: TLSv1.2
+Ciphersuite: ECDHE-ECDSA-AES256-GCM-SHA384
+Peer certificate: CN=localhost
+Hash used: SHA256
+Signature type: ecdsa_secp256r1_sha256
+Verification error: self-signed certificate
+Supported Elliptic Curve Point Formats: uncompressed:ansiX962_compressed_prime:ansiX962_compressed_char2
+
+## a weak, non-forward-secret cipher (TLS 1.2, AES128-SHA, no security level restriction) must be refused
+64140000:error:0A000410:SSL routines:ssl3_read_bytes:ssl/tls alert handshake failure:../openssl-3.5.6/ssl/record/rec_layer_s3.c:918:SSL alert number 40
+New, (NONE), Cipher is (NONE)
+
+## TLS compression
+Compression: NONE
+
+## HTTP/2 offered by nginx (ALPN, openssl s_client)
+
+## the certificate (public part only)
+subject=CN=localhost
+issuer=CN=localhost
+notBefore=Nov 13 15:18:28 2026 GMT
+notAfter=Nov 13 15:18:28 2027 GMT
+X509v3 Subject Alternative Name: 
+    DNS:localhost, IP Address:127.0.0.1, IP Address:0:0:0:0:0:0:0:1
+ALPN result (second run of the same command without -brief): ALPN protocol: h2

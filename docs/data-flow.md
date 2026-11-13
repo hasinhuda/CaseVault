@@ -7,7 +7,7 @@ This document models data movement across CaseVault's trust boundaries during ke
 
 ## 2. Global Data Flow Diagram (DFD)
 
-> **As built vs target.** The "TLS Ingress or Reverse Proxy" node (Trust Boundary 1) is a **TARGET (not built in this submission)**: the application is reached over plain HTTP. All other nodes exist in the code. The key store is a file next to the data, not a separate service. See [known-limitations.md](assurance/known-limitations.md).
+> **As built vs target.** The "TLS Ingress or Reverse Proxy" node (Trust Boundary 1) is **built in the Docker stack (Phase 12B)** as the nginx container with TLS 1.2/1.3 and a self-signed certificate (evidence `docs/evidence/deploy/`); outside that stack (local and default profiles) the application is reached over plain HTTP, and behind nginx the hop to the application is plain HTTP on an internal network. All other nodes exist in the code. The key store is a file next to the data, not a separate service. See [known-limitations.md](assurance/known-limitations.md).
 
 ```mermaid
 flowchart TD
@@ -16,7 +16,7 @@ flowchart TD
     end
 
     subgraph Boundary1["Trust Boundary 1: Transport and Network"]
-        TLS["TLS Ingress or Reverse Proxy - TARGET (not built)"]
+        TLS["TLS Ingress: nginx reverse proxy (deploy/compose.yaml)"]
     end
 
     subgraph Boundary2["Trust Boundary 2: Application Context"]

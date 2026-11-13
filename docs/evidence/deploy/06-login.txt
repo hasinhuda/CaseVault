@@ -1,0 +1,7 @@
+# login through nginx with the first-run accounts 2026-11-13T21:33:35
+credentials read from the volume file inside cvr-app: 4 accounts (names and passwords are not printed)
+admin_auditor : POST /login -> 302 https://localhost:8443/dashboard ; GET /dashboard -> HTTP 200
+manager_alice : POST /login -> 302 https://localhost:8443/dashboard ; GET /dashboard -> HTTP 200
+analyst_bob : POST /login -> 302 https://localhost:8443/dashboard ; GET /dashboard -> HTTP 200
+client_charlie : POST /login -> 302 https://localhost:8443/dashboard ; GET /dashboard -> HTTP 200
+admin_auditor with a wrong password -> 302 https://localhost:8443/login?error=true

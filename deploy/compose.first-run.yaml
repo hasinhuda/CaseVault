@@ -1,0 +1,11 @@
+# One-time override (Phase 12B): creates the four standard accounts on the FIRST start only.
+# Use: scripts/deploy-up.ps1 -FirstRun        Finish: scripts/deploy-up.ps1 -FinishFirstRun (starts WITHOUT this file and
+# deletes the credentials file). The opt-in flag requires the credentials-file path on every start, so this file must not
+# be kept in use. Passwords are written only to the file below (inside the cvr_firstrun volume), never to the logs.
+services:
+  cvr-app:
+    environment:
+      CASEVAULT_BOOTSTRAP_INITIAL_ACCOUNTS_ENABLED: "true"
+      CASEVAULT_BOOTSTRAP_INITIAL_CREDENTIALS_FILE: /data/firstrun/initial-credentials.txt
+    volumes:
+      - cvr_firstrun:/data/firstrun

@@ -5,7 +5,7 @@ CaseVault is a multi-tenant case-management and digital evidence platform design
 
 The system comprises:
 - An untrusted client-side browser tier.
-- An edge transport boundary (TLS termination / reverse proxy). **TARGET (not built in this submission):** no reverse proxy or TLS termination exists in the repository; the application serves plain HTTP.
+- An edge transport boundary (TLS termination / reverse proxy). **Built in the Docker stack (Phase 12B):** nginx terminates TLS (`deploy/compose.yaml`); outside that stack the application serves plain HTTP.
 - A hardened Spring Boot 3.5.x application runtime executing within a non-root container (built: non-root user in the `Dockerfile`; no compose file or runtime hardening exists).
 - Persistent storage tiers consisting of a PostgreSQL 16 database and an encrypted evidence filesystem.
 
@@ -41,12 +41,12 @@ The system comprises:
 
 ## 4. Trust Boundaries
 
-> **As built vs target.** Built: TB-2 (Spring Boot application with filter chain, services, Argon2id, Tink AES-256-GCM, HMAC chain), TB-3 (PostgreSQL in the prod-like profile, in-memory H2 otherwise; encrypted evidence files; file-based key store) and the non-root user of TB-4. **TARGET (not built in this submission):** the TB-1 ingress / TLS reverse proxy and any TB-4 runtime hardening (read-only root filesystem, dropped capabilities, resource limits). Controls in the tables below that depend on those are marked TARGET. See [known-limitations.md](assurance/known-limitations.md).
+> **As built vs target.** Built: TB-2 (Spring Boot application with filter chain, services, Argon2id, Tink AES-256-GCM, HMAC chain), TB-3 (PostgreSQL in the prod-like profile, in-memory H2 otherwise; encrypted evidence files; file-based key store) and the non-root user of TB-4. **Built in Phase 12B (Docker stack only):** the TB-1 nginx ingress with TLS (self-signed certificate) and the TB-4 runtime hardening (read-only root filesystem, dropped capabilities, resource limits; evidence in `docs/evidence/deploy/`). **TARGET (not built):** a certificate authority certificate, TLS between nginx and the application, and anything outside the one-host Docker stack. See [known-limitations.md](assurance/known-limitations.md).
 
 ```
 [ Browser / Client Machine (Untrusted) ]
 ====================== Trust Boundary 1 (TB-1: Network / Transport) ======================
-[ Ingress / TLS Reverse Proxy / Gateway ]   <-- TARGET (not built in this submission)
+[ Ingress / TLS Reverse Proxy / Gateway ]   <-- nginx in deploy/compose.yaml (Phase 12B, self-signed certificate)
 ====================== Trust Boundary 2 (TB-2: Application Perimeter) ====================
 [ CaseVault Spring Boot Application Runtime (JVM) ]
   ├── Web Security Filter Chain (Authentication, CSP and other headers, Session Fixation)
@@ -75,8 +75,8 @@ The system comprises:
 | Boundary | STRIDE Category | Threat Description | Affected Assets | Countermeasure & Security Requirement |
 |---|---|---|---|---|
 | **TB-1** | **Spoofing** | Attacker impersonates legitimate user via brute force or session hijacking | A-04, A-07 | Argon2id hashing, lockout after 5 failures, SameSite=Strict, Secure cookies, session rotation (SR-03, SR-04, SR-05) |
-| **TB-1** | **Tampering** | Man-in-the-Middle intercepts and modifies requests in flight | All | TARGET (not built in this submission): TLS (1.3 intended) at a reverse proxy. Built: the HSTS header is written only when `casevault.security.hsts-enabled=true` (prod-like profile) and is verified as a header only; the application has no TLS configuration of its own |
-| **TB-1** | **Information Disclosure** | Plaintext credential sniffing or session token interception | A-04, A-05 | TARGET (not built): TLS. Built: HttpOnly cookie flags, strict CSP (SR-05, SR-09) |
+| **TB-1** | **Tampering** | Man-in-the-Middle intercepts and modifies requests in flight | All | Built in the Docker stack (Phase 12B): TLS 1.2/1.3 at nginx (TLS 1.3 negotiated by default, weak ciphers refused; `docs/evidence/deploy/05-tls.txt`) with a self-signed certificate, and the HSTS header written by the application (`04-headers.txt`). Not built: a certificate from a certificate authority; outside the Docker stack the application has no TLS |
+| **TB-1** | **Information Disclosure** | Plaintext credential sniffing or session token interception | A-04, A-05 | Built in the Docker stack: TLS at nginx (self-signed), HttpOnly and Secure cookie flags, strict CSP (SR-05, SR-09) |
 | **TB-2** | **Elevation of Privilege** | Low-privilege user invokes administrative or managerial endpoints | A-02, A-03, A-06 | Server-side method security (`@PreAuthorize`), role-based access control re-validated on every request (SR-01) |
 | **TB-2** | **Tampering** | Parameter manipulation (IDOR/BOLA) to modify foreign tenant records | A-01, A-02, A-07 | Service-level tenancy check (`organisation_id`), uniform HTTP 404 masking (SR-01, SR-02) |
 | **TB-2** | **Repudiation** | Analyst denies deleting evidence or modifying sensitive notes | A-02, A-06 | Cryptographic HMAC-SHA256 audit log capturing actor, event type, and millisecond timestamp (SR-13) |
@@ -84,7 +84,7 @@ The system comprises:
 | **TB-2** | **Denial of Service** | Unbounded search queries or credential stuffing saturate JVM threads | A-08 | Query pagination, SQL wildcard escaping, account lockout (SR-04, SR-10) |
 | **TB-3** | **Information Disclosure** | Direct physical disk or database snapshot inspection reveals evidence | A-01, A-04 | Evidence encrypted at rest with Google Tink (AES-256-GCM); passwords hashed with Argon2id (SR-03, SR-12) |
 | **TB-3** | **Tampering** | Rogue DBA alters audit log rows directly to conceal malicious activity | A-06 | Sequential HMAC-SHA256 hash chaining; breaks verification upon any modified historical row (SR-13, SR-14) |
-| **TB-4** | **Elevation of Privilege** | Attacker exploits application bug to gain host root privileges | A-08 | Container runs under unprivileged non-root user (`UID 10001`), a read-only root filesystem is TARGET (not built: no compose file or runtime setting exists) (SR-18) |
+| **TB-4** | **Elevation of Privilege** | Attacker exploits application bug to gain host root privileges | A-08 | Container runs under unprivileged non-root user (`UID 10001`), read-only root filesystem, all capabilities dropped and `no-new-privileges` set in `deploy/compose.yaml` (`docs/evidence/deploy/02-inspect.txt`) (SR-18) |
 
 ---
 

@@ -1,0 +1,146 @@
+# CaseVault hardened stack (Phase 12B): PostgreSQL + application + nginx (TLS).
+#
+# Project name: casevault-rebuild. Containers: cvr-db, cvr-app, cvr-nginx. Volumes: cvr_*. Networks: *_cvr_edge / *_cvr_data.
+# Only nginx is published (host 127.0.0.1:8443). The database port and the application port are NEVER published.
+# Secrets are files under .local-data/deploy/ (git-ignored), created by scripts/deploy-init.ps1.
+# Use the scripts in scripts/ (deploy-up.ps1 etc.); they refuse any other project name.
+name: casevault-rebuild
+
+services:
+  cvr-db:
+    image: postgres:16-alpine@sha256:f377d590e5474681d4d7838635031a2b50647923b7abfa803ce9b5ff35d5c663
+    container_name: cvr-db
+    user: "70:70"
+    command: ["postgres", "-c", "shared_buffers=48MB", "-c", "max_connections=30"]
+    environment:
+      POSTGRES_DB: casevault
+      POSTGRES_USER: casevault
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+    secrets:
+      - source: db_password
+        target: postgres_password
+    volumes:
+      - cvr_pgdata:/var/lib/postgresql/data
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=16m
+      - /var/run/postgresql:rw,noexec,nosuid,size=1m,uid=70,gid=70
+    read_only: true
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 256m
+    memswap_limit: 256m
+    pids_limit: 100
+    networks: [cvr_data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U casevault -d casevault -h 127.0.0.1"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 15s
+    restart: unless-stopped
+
+  cvr-app:
+    image: cvr-app:dev
+    container_name: cvr-app
+    user: "10001:10001"
+    environment:
+      SPRING_PROFILES_ACTIVE: prod-like
+      JAVA_TOOL_OPTIONS: "-Xmx384m"
+      POSTGRES_HOST: cvr-db
+      POSTGRES_PORT: "5432"
+      POSTGRES_DB: casevault
+      POSTGRES_USER: casevault
+      # The database password is NOT an environment variable: it is the secret file /run/secrets/spring.datasource.password.
+      CASEVAULT_STORAGE_EVIDENCE_DIR: /data/evidence
+      CASEVAULT_STORAGE_KEYSET_PATH: /data/keys/evidence-keyset.json
+      CASEVAULT_AUDIT_KEY_PATH: /data/keys/audit-hmac.key
+    secrets:
+      - source: db_password
+        target: spring.datasource.password
+    volumes:
+      - cvr_evidence:/data/evidence
+      - cvr_keys:/data/keys
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=128m
+    read_only: true
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 640m
+    memswap_limit: 640m
+    pids_limit: 200
+    networks: [cvr_edge, cvr_data]
+    depends_on:
+      cvr-db:
+        condition: service_healthy
+    healthcheck:
+      # Unauthenticated liveness URL (docs/adr/0009-deployment-configuration.md): 200 {"status":"UP"}
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8080/actuator/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 6
+      start_period: 60s
+    restart: unless-stopped
+
+  cvr-nginx:
+    image: nginx:stable-alpine@sha256:901e593c95dc85f5a729f5765516321366ef4ac401821431d408897e95287d0a
+    container_name: cvr-nginx
+    user: "101:101"
+    entrypoint: ["nginx", "-g", "daemon off;"]
+    ports:
+      - "127.0.0.1:8443:8443"
+    secrets:
+      - source: tls_crt
+        target: tls.crt
+      - source: tls_key
+        target: tls.key
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/proxy_params.conf:/etc/nginx/proxy_params.conf:ro
+      - ./error_pages:/etc/nginx/error_pages:ro
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=16m
+    read_only: true
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 64m
+    memswap_limit: 64m
+    pids_limit: 50
+    networks: [cvr_edge]
+    depends_on:
+      cvr-app:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider --no-check-certificate https://127.0.0.1:8443/actuator/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 4
+      start_period: 10s
+    restart: unless-stopped
+
+networks:
+  cvr_edge:
+    driver: bridge
+  cvr_data:
+    driver: bridge
+    internal: true
+
+volumes:
+  cvr_pgdata:
+    name: cvr_pgdata
+  cvr_evidence:
+    name: cvr_evidence
+  cvr_keys:
+    name: cvr_keys
+  cvr_firstrun:
+    name: cvr_firstrun
+
+secrets:
+  db_password:
+    file: ../.local-data/deploy/secrets/db_password.txt
+  tls_crt:
+    file: ../.local-data/deploy/tls/tls.crt
+  tls_key:
+    file: ../.local-data/deploy/tls/tls.key

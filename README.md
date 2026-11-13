@@ -51,6 +51,26 @@ Start the application with the `local` profile (HTTP on port 8080, in-memory H2 
 
 Then open `http://localhost:8080/login`. On every start the `local` profile creates synthetic accounts with **random passwords** (only in this profile) and prints them once in the console banner `[CASEVAULT FIRST-RUN BOOTSTRAP]`; they are also written to `.local-data/bootstrap-credentials.txt` (git-ignored). Besides the four normal accounts (`admin_auditor`, `manager_alice`, `analyst_bob`, `client_charlie`) the local profile creates DEMO data for browser tests: a second client organisation "Demo Client Org B" with the user `demo_client_b` and one DEMO case, and a second administrator `demo_admin_2`. The default and `prod-like` profiles never create demo data, and the `prod-like` profile creates no accounts at all. Stopping and starting the application resets the in-memory database (and generates new passwords). A step-by-step browser test guide is in [docs/assurance/manual-browser-tests.md](docs/assurance/manual-browser-tests.md).
 
+## Run with Docker (hardened)
+
+A hardened stack (nginx with TLS, the application, PostgreSQL; read-only containers, all capabilities dropped, only `127.0.0.1:8443` published) is described in [docs/assurance/deployment-hardening.md](docs/assurance/deployment-hardening.md). It uses its own compose project `casevault-rebuild` and the names `cvr-*`; the scripts refuse any other project. Requires Docker, PowerShell and openssl (Git for Windows includes it). From the repository root:
+
+```powershell
+scripts\deploy-init.ps1                  # creates the database password and a self-signed certificate in .local-data\deploy\ (git-ignored)
+scripts\deploy-up.ps1 -Build -FirstRun   # builds the image and starts the stack; the four accounts are created ONCE
+scripts\deploy-status.ps1                # state and hardening settings
+```
+
+Open `https://localhost:8443/login` (self-signed certificate: the browser warns). The initial passwords are written only to a file inside the Docker volume `cvr_firstrun` and are never printed or logged. **After the first login the first-run override must be removed and the credentials file deleted** (the opt-in flag needs the credentials-file path on every start, so the override must not stay in use):
+
+```powershell
+scripts\deploy-up.ps1 -FinishFirstRun    # restarts WITHOUT the override and deletes the credentials file
+scripts\deploy-down.ps1                  # stops and removes the containers, keeps the data
+scripts\deploy-down.ps1 -RemoveData      # also deletes the data volumes of this project (cvr_*)
+```
+
+`scripts\deploy-verify.ps1` repeats the recorded checks and writes scrubbed evidence to `docs/evidence/deploy/`. There is no backup, restore or rollback procedure yet (see [known limitations](docs/assurance/known-limitations.md)).
+
 ## Documentation
 
 - [Evidence Index](docs/evidence-index.md)

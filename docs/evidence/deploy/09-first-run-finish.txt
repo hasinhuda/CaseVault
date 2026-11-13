@@ -1,0 +1,13 @@
+# B7c: first-run finish 2026-11-13T21:34:54
+occurrences of any first-run password in the logs of cvr-app, cvr-db, cvr-nginx BEFORE the finish: 0
+files in /data/firstrun before: initial-credentials.txt
+first-run flag in the environment before: True
+deploy-up.ps1 -FinishFirstRun exit code: 0
+cvr-app health after the restart: healthy
+first-run flag in the environment after: False
+first-run volume mounted in cvr-app after: False
+files left in the cvr_firstrun volume after the finish: 0
+waiting 65 seconds so the login rate-limit window of the host address has passed ...
+after the restart without the override: admin_auditor : POST /login -> 302 https://localhost:8443/dashboard ; GET /dashboard -> HTTP 200
+after the restart without the override: client_charlie : POST /login -> 302 https://localhost:8443/dashboard ; GET /dashboard -> HTTP 200
+occurrences of any first-run password in the logs AFTER the restart: 0

@@ -1,0 +1,14 @@
+# nginx limits and its own error pages 2026-11-13T21:37:39
+## upload of 13 MB (limit in nginx: client_max_body_size 12m; the application accepts 10 MB per file): the request is stopped by nginx
+HTTP/1.1 413 Request Entity Too Large
+Server: nginx
+Content-Type: text/html
+413 page title: Upload too large - CaseVault
+413 page contains the word nginx or a version number: False
+
+## 12 MB limit is not applied below it: a small unauthenticated POST reaches the application (CSRF/authentication answer, not nginx)
+HTTP 403
+
+## actuator paths other than /actuator/health
+GET /actuator/info  : HTTP 404
+GET /actuator/env   : HTTP 404
