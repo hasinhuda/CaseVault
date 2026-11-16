@@ -39,7 +39,7 @@
         <tika.version>3.3.1</tika.version>
         <tink.version>1.18.0</tink.version>
         <!-- dependency convergence: align error_prone_annotations between tink and gson -->
-        <error-prone-annotations.version>2.41.0</error-prone-annotations.version>
+        <error-prone-annotations.version>2.52.0</error-prone-annotations.version>
     </properties>
 
     <dependencyManagement>
