@@ -8,5 +8,7 @@ import java.util.List;
 public interface RemediationActionRepository extends JpaRepository<RemediationAction, String> {
 
     List<RemediationAction> findByCaseEntityIdOrderByCreatedAtAsc(String caseId);
+
+    boolean existsByCreatedBy_Id(String createdById);
 }
 

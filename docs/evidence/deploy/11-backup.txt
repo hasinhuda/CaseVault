@@ -1,0 +1,41 @@
+# Stage B step 1: seed data through nginx, baseline check, encrypted backup (2026-11-13, local https://localhost:8443)
+# Scrubbed: no passwords, passphrase, session ids or CSRF tokens. Hashes shortened to 12 hex characters. All data synthetic.
+# Stack started with: scripts\deploy-down.ps1 -RemoveData ; scripts\deploy-up.ps1 -Build -FirstRun (credentials read only inside a helper container, never printed)
+
+== seed (curl.exe over HTTPS, CSRF token taken from the page, login limit respected)
+client login : 302 https://localhost:8443/dashboard
+create case  : 302 -> case id 8ee3d95c-892a-4833-9d96-50b5060f13d2
+upload       : 302            (inert synthetic text file, one line, about 100 bytes)
+evidence id  : 73e2dcf3-09c5-4539-9c2f-34becfbca6c4
+manager login: 302 https://localhost:8443/dashboard
+add note     : 302 https://localhost:8443/cases/8ee3d95c-892a-4833-9d96-50b5060f13d2?tab=notes
+note visible : True
+sha256(upload) first12: 7a00d2cf5f54
+
+== baseline before the backup
+admin_auditor login : 302 https://localhost:8443/dashboard
+manager_alice login : 302 https://localhost:8443/dashboard
+analyst_bob login : 302 https://localhost:8443/dashboard
+client_charlie login : 302 https://localhost:8443/dashboard
+case exists (client sees title): True
+evidence download : HTTP 200 ; sha256 first12 7a00d2cf5f54 ; original first12 7a00d2cf5f54 ; identical = True
+note exists (manager sees note): True
+audit chain      : Chain valid ; 13 events verified
+
+== scripts\backup.ps1 (passphrase supplied as a SecureString object by a local harness; interactive use prompts)
+Stopping cvr-app briefly for a consistent copy ...
+Database dump (pg_dump, custom format, inside cvr-db) ...
+Evidence volume (encrypted files) ...
+Key volume (keyset + audit key) ...
+Encrypting with gpg ...
+Backup written: .local-data\backups\20261113-170618Z (payload.tar.enc + manifest.json)
+Starting cvr-app again ...
+
+== manifest.json (hashes shortened; the file itself holds full hashes and no secret)
+format: casevault-backup-1 ; project: casevault-rebuild ; encryption: gpg symmetric AES-256 (integrity protected)
+postgres: PostgreSQL 16.16 ; appImageId: sha256:50e007d926bf...
+encryptedFile: payload.tar.enc, 8582 bytes, sha256 0635e1055f00...
+plaintextParts: db.dump 27889 bytes (d9282f175b3c...), evidence.tar 10240 bytes (88a11167abd5...), keys.tar 10240 bytes (d655d08b1f51...)
+
+== the backup folder is git-ignored
+git check-ignore -v .local-data/backups/20261113-170618Z/manifest.json -> .gitignore:12:.local-data/

@@ -41,7 +41,9 @@ services:
     restart: unless-stopped
 
   cvr-app:
-    image: cvr-app:dev
+    # Default cvr-app:dev (unchanged). Rollback/upgrade: set CVR_APP_IMAGE to another LOCAL tag, for example cvr-app:prev
+    # (see docs/runbook-ops.md). Only tags starting with cvr-app: are intended; scripts\deploy-up.ps1 checks this.
+    image: ${CVR_APP_IMAGE:-cvr-app:dev}
     container_name: cvr-app
     user: "10001:10001"
     environment:

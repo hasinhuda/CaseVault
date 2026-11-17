@@ -1,0 +1,28 @@
+# Stage B step 4: negative control, restored data WITHOUT its key volume contents (2026-11-13)
+# Method: cvr-app stopped; the two key files inside OUR volume cvr_keys were moved into a sub-folder by a helper container; cvr-app started.
+# The application then generated a NEW evidence keyset and a NEW audit key (it cannot know the old ones).
+
+key volume content while hidden: "hidden" (only the sub-folder)
+
+== the same integrity script as in 13-restore-integrity.txt
+admin_auditor login : 302 https://localhost:8443/dashboard
+manager_alice login : 302 https://localhost:8443/dashboard
+analyst_bob login : 302 https://localhost:8443/dashboard
+client_charlie login : 302 https://localhost:8443/dashboard
+case exists (client sees title): True
+evidence download : HTTP 404 ; (the 12 hex characters shown by the script are the hash of the error page, not of the file) ; identical = False
+note exists (manager sees note): True
+audit chain      : Chain BROKEN ; 0 events verified
+
+Meaning: database and encrypted files without the original keys are useless for evidence (it cannot be decrypted, the download answers
+404 instead of the file) and the audit chain no longer verifies (HMAC key differs). The key volume is therefore part of every backup, and
+it is only ever stored encrypted with the backup passphrase.
+
+Clean-up: the control wrote new audit events signed with the new key, so the old chain could not be repaired by moving the files back.
+The state was discarded instead: scripts\deploy-down.ps1 -RemoveData, then scripts\restore.ps1 -Confirm from the same backup (second restore),
+then the integrity script again:
+case exists (client sees title): True
+evidence download : HTTP 200 ; sha256 first12 7a00d2cf5f54 ; original first12 7a00d2cf5f54 ; identical = True
+note exists (manager sees note): True
+audit chain      : Chain valid ; 22 events verified
+This also shows that a backup can be restored more than once.

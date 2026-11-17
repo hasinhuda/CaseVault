@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head th:replace="~{layout :: htmlhead('Create User')}">
+    <title>Create User - CaseVault</title>
+</head>
+<body>
+<a href="#main-content" class="skip-link">Skip to main content</a>
+
+<div th:replace="~{layout :: appheader}"></div>
+
+<div class="app-shell">
+    <aside th:replace="~{layout :: appsidebar('users')}"></aside>
+
+    <main id="main-content" class="content-wrapper">
+        <div class="page-header">
+            <div>
+                <h1>Create User Account</h1>
+                <p class="page-subtitle">Add a new user to the platform. Password must comply with security requirements.</p>
+            </div>
+        </div>
+
+        <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}" role="alert" aria-live="polite"></div>
+
+        <div class="card form-card-max">
+            <form th:action="@{/admin/users}" th:object="${createUserRequestDto}" method="post">
+                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+
+                <div class="form-group">
+                    <label for="username-input">Username</label>
+                    <input type="text" id="username-input" th:field="*{username}" class="form-control" required
+                           minlength="3" maxlength="50" placeholder="e.g. analyst_john" autocomplete="off"/>
+                    <span th:if="${#fields.hasErrors('username')}" th:errors="*{username}" class="status-bad"></span>
+                </div>
+
+                <div class="form-group">
+                    <label for="email-input">Email Address</label>
+                    <input type="email" id="email-input" th:field="*{email}" class="form-control" required
+                           maxlength="100" placeholder="e.g. user@example.org" autocomplete="off"/>
+                    <span th:if="${#fields.hasErrors('email')}" th:errors="*{email}" class="status-bad"></span>
+                </div>
+
+                <div class="form-group">
+                    <label for="role-select">Role</label>
+                    <select id="role-select" th:field="*{role}" class="form-control" required>
+                        <option value="">-- Select Role --</option>
+                        <option th:each="r : ${roles}" th:value="${r}" th:text="${r}">ROLE</option>
+                    </select>
+                    <span th:if="${#fields.hasErrors('role')}" th:errors="*{role}" class="status-bad"></span>
+                </div>
+
+                <div class="form-group">
+                    <label for="org-select">Organisation</label>
+                    <select id="org-select" th:field="*{organisationId}" class="form-control">
+                        <option value="">-- None (Auditor Admin only) --</option>
+                        <option th:each="org : ${organisations}" th:value="${org.id()}" th:text="${org.name() + ' (' + org.code() + ')'}">Org Name (CODE)</option>
+                    </select>
+                    <span th:if="${#fields.hasErrors('organisationId')}" th:errors="*{organisationId}" class="status-bad"></span>
+                </div>
+
+                <div class="form-group">
+                    <label for="password-input">Initial Password</label>
+                    <input type="password" id="password-input" th:field="*{password}" class="form-control" required
+                           minlength="12" maxlength="128" placeholder="At least 12 characters" autocomplete="new-password"/>
+                    <span th:if="${#fields.hasErrors('password')}" th:errors="*{password}" class="status-bad"></span>
+                    <p class="timeline-meta">Must contain at least 12 characters, including uppercase, lowercase, numbers, and special characters.</p>
+                </div>
+
+                <div class="mt-16">
+                    <button type="submit" class="btn btn-primary">Create Account</button>
+                    <a th:href="@{/admin/users}" class="btn btn-secondary ml-8">Cancel</a>
+                </div>
+            </form>
+        </div>
+    </main>
+</div>
+
+<div th:replace="~{layout :: appfooter}"></div>
+</body>
+</html>
+

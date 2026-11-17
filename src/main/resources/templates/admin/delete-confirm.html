@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head th:replace="~{layout :: htmlhead('Confirm delete')}">
+    <title>Confirm delete - CaseVault</title>
+</head>
+<body>
+<a href="#main-content" class="skip-link">Skip to main content</a>
+
+<div th:replace="~{layout :: appheader}"></div>
+
+<div class="app-shell">
+    <aside th:replace="~{layout :: appsidebar('users')}"></aside>
+
+    <main id="main-content" class="content-wrapper">
+        <div class="page-header">
+            <div>
+                <h1>Delete User Account</h1>
+                <p class="page-subtitle">Permanently delete account. This action cannot be undone.</p>
+            </div>
+        </div>
+
+        <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}" role="alert"></div>
+
+        <div class="card form-card-max">
+            <p>Account: <strong th:text="${target.username()}">user</strong></p>
+            <p>Role: <span th:text="${target.role()}">ROLE</span></p>
+            <p>Organisation: <span th:text="${target.organisationCode()}">ORG</span></p>
+            <p>Status: <span th:text="${target.enabled() ? 'Enabled' : 'Disabled'}">Enabled</span></p>
+            <div class="alert alert-danger">
+                <strong>Warning:</strong> Accounts with linked forensic records (cases, evidence, notes, remediation actions, reports) cannot be deleted. Disable the account instead.
+            </div>
+            <form th:action="@{/admin/users/{id}/delete(id=${target.id()})}" method="post">
+                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                <button type="submit" class="btn btn-danger">Confirm Delete</button>
+                <a th:href="@{/admin/users}" class="btn btn-secondary ml-8">Cancel</a>
+            </form>
+        </div>
+    </main>
+</div>
+
+<div th:replace="~{layout :: appfooter}"></div>
+</body>
+</html>
+

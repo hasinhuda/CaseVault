@@ -15,4 +15,8 @@ public interface ReportRepository extends JpaRepository<Report, String> {
     List<Report> findByCaseEntityIdOrderByCreatedAtAsc(String caseId);
 
     List<Report> findByCaseEntityIdAndStatusOrderByCreatedAtAsc(String caseId, ReportStatus status);
+
+    boolean existsByAuthor_Id(String authorId);
+
+    boolean existsByApprovedBy_Id(String approverId);
 }

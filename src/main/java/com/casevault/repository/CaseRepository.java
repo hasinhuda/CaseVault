@@ -14,6 +14,10 @@ public interface CaseRepository extends JpaRepository<Case, String>, JpaSpecific
 
     List<Case> findByAssignedAnalystId(String analystId);
 
+    boolean existsByOwner_Id(String ownerId);
+
+    boolean existsByAssignedAnalyst_Id(String analystId);
+
     @Query("SELECT c FROM Case c WHERE c.organisation.id = :orgId AND c.assignedAnalyst.id = :analystId")
     List<Case> findByOrganisationIdAndAssignedAnalystId(@Param("orgId") String orgId, @Param("analystId") String analystId);
 }

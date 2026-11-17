@@ -1,16 +1,26 @@
 package com.casevault.service;
 
+import com.casevault.dto.CreateUserRequestDto;
 import com.casevault.exception.AdminActionRefusedException;
 import com.casevault.exception.ResourceNotFoundException;
+import com.casevault.model.Organisation;
 import com.casevault.model.Role;
 import com.casevault.model.User;
+import com.casevault.repository.CaseNoteRepository;
+import com.casevault.repository.CaseRepository;
+import com.casevault.repository.EvidenceRepository;
+import com.casevault.repository.OrganisationRepository;
+import com.casevault.repository.RemediationActionRepository;
+import com.casevault.repository.ReportRepository;
 import com.casevault.repository.UserRepository;
 import com.casevault.security.CaseVaultUserPrincipal;
+import com.casevault.security.PasswordPolicyValidator;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.security.core.session.SessionInformation;
 import org.springframework.security.core.session.SessionRegistry;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -19,6 +29,7 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Objects;
+import java.util.UUID;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.regex.Pattern;
 
@@ -41,6 +52,13 @@ public class DefaultAdminUserService implements AdminUserService {
             "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}");
 
     private final UserRepository userRepository;
+    private final OrganisationRepository organisationRepository;
+    private final CaseRepository caseRepository;
+    private final EvidenceRepository evidenceRepository;
+    private final CaseNoteRepository caseNoteRepository;
+    private final RemediationActionRepository remediationActionRepository;
+    private final ReportRepository reportRepository;
+    private final PasswordEncoder passwordEncoder;
     private final java.util.function.Consumer<String> sessionExpirer;
     private final AuditEventRecorder recorder;
     private final EvidenceStore evidenceStore;
@@ -48,11 +66,26 @@ public class DefaultAdminUserService implements AdminUserService {
     private final TransactionTemplate transactionTemplate;
     private final ReentrantLock adminLock = new ReentrantLock(true);
 
-    public DefaultAdminUserService(UserRepository userRepository, SessionRegistry sessionRegistry,
+    public DefaultAdminUserService(UserRepository userRepository,
+                                   OrganisationRepository organisationRepository,
+                                   CaseRepository caseRepository,
+                                   EvidenceRepository evidenceRepository,
+                                   CaseNoteRepository caseNoteRepository,
+                                   RemediationActionRepository remediationActionRepository,
+                                   ReportRepository reportRepository,
+                                   PasswordEncoder passwordEncoder,
+                                   SessionRegistry sessionRegistry,
                                    AuditEventRecorder recorder, EvidenceStore evidenceStore,
                                    AuditStatusProvider auditStatus,
                                    PlatformTransactionManager transactionManager) {
         this.userRepository = userRepository;
+        this.organisationRepository = organisationRepository;
+        this.caseRepository = caseRepository;
+        this.evidenceRepository = evidenceRepository;
+        this.caseNoteRepository = caseNoteRepository;
+        this.remediationActionRepository = remediationActionRepository;
+        this.reportRepository = reportRepository;
+        this.passwordEncoder = passwordEncoder;
         // Only the expiring action is kept, not the registry object itself.
         this.sessionExpirer = userId -> expireSessions(sessionRegistry, userId);
         this.recorder = recorder;
@@ -150,6 +183,133 @@ public class DefaultAdminUserService implements AdminUserService {
             return ActionResult.DONE;
         }));
         sessionExpirer.accept(targetId);
+    }
+
+    @Override
+    public UserRow createUser(CaseVaultUserPrincipal admin, CreateUserRequestDto request) {
+        requireAdmin(admin);
+        if (request == null) {
+            throw new AdminActionRefusedException("Invalid user request.");
+        }
+        String username = request.getUsername() != null ? request.getUsername().trim() : "";
+        String email = request.getEmail() != null ? request.getEmail().trim() : "";
+        Role role = request.getRole();
+        String password = request.getPassword();
+
+        if (username.length() < 3 || username.length() > 50 || !username.matches("^[a-zA-Z0-9_.-]+$")) {
+            throw new AdminActionRefusedException("Username must be 3-50 alphanumeric characters, dots, underscores or hyphens.");
+        }
+        if (email.isBlank() || email.length() > 100 || !email.contains("@")) {
+            throw new AdminActionRefusedException("Valid email address required.");
+        }
+        if (role == null) {
+            throw new AdminActionRefusedException("Role is required.");
+        }
+
+        try {
+            PasswordPolicyValidator.validate(password);
+        } catch (RuntimeException e) {
+            throw new AdminActionRefusedException(e.getMessage());
+        }
+
+        return locked(admin, () -> transactionTemplate.execute(status -> {
+            requireActiveActor(admin);
+
+            if (userRepository.findByUsername(username).isPresent()) {
+                throw new AdminActionRefusedException("Username '" + username + "' is already in use.");
+            }
+            if (userRepository.findByEmail(email).isPresent()) {
+                throw new AdminActionRefusedException("Email '" + email + "' is already registered.");
+            }
+
+            Organisation organisation = null;
+            if (role != Role.AUDITOR_ADMIN) {
+                if (request.getOrganisationId() == null || request.getOrganisationId().isBlank()) {
+                    throw new AdminActionRefusedException("Organisation is required for role " + role.name() + ".");
+                }
+                organisation = organisationRepository.findById(request.getOrganisationId())
+                        .orElseThrow(() -> new AdminActionRefusedException("Selected organisation not found."));
+            } else if (request.getOrganisationId() != null && !request.getOrganisationId().isBlank()) {
+                organisation = organisationRepository.findById(request.getOrganisationId()).orElse(null);
+            }
+
+            Instant now = now();
+            String passwordHash = passwordEncoder.encode(password);
+            User newUser = new User(
+                    UUID.randomUUID().toString(),
+                    organisation,
+                    username,
+                    passwordHash,
+                    role,
+                    email,
+                    true,
+                    now
+            );
+            User saved = userRepository.save(newUser);
+
+            recorder.record(AuditEventType.ADMIN_ACCOUNT_CREATED, admin.getUserId(), null,
+                    AuditReasonCode.CREATED_BY_ADMIN.name());
+
+            return toRow(saved, now);
+        }));
+    }
+
+    @Override
+    public ActionResult delete(CaseVaultUserPrincipal admin, String userId) {
+        requireAdmin(admin);
+        String targetId = requireShape(userId);
+        ActionResult result = locked(admin, () -> transactionTemplate.execute(status -> {
+            requireActiveActor(admin);
+            User target = userRepository.findById(targetId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Not found"));
+
+            if (Objects.equals(target.getId(), admin.getUserId())) {
+                throw new AdminActionRefusedException("You cannot delete your own account.");
+            }
+
+            if (target.getRole() == Role.AUDITOR_ADMIN) {
+                long activeAdmins = userRepository.lockActiveByRole(Role.AUDITOR_ADMIN).size();
+                if (activeAdmins <= 1 && target.isEnabled()) {
+                    throw new AdminActionRefusedException("The last active administrator cannot be deleted.");
+                }
+            }
+
+            if (caseRepository.existsByOwner_Id(targetId) || caseRepository.existsByAssignedAnalyst_Id(targetId)) {
+                throw new AdminActionRefusedException("Cannot delete user with linked cases. Disable the account instead.");
+            }
+            if (evidenceRepository.existsByUploadedBy_Id(targetId)) {
+                throw new AdminActionRefusedException("Cannot delete user with uploaded evidence. Disable the account instead.");
+            }
+            if (caseNoteRepository.existsByAuthor_Id(targetId)) {
+                throw new AdminActionRefusedException("Cannot delete user with case investigation notes. Disable the account instead.");
+            }
+            if (remediationActionRepository.existsByCreatedBy_Id(targetId)) {
+                throw new AdminActionRefusedException("Cannot delete user with created remediation actions. Disable the account instead.");
+            }
+            if (reportRepository.existsByAuthor_Id(targetId) || reportRepository.existsByApprovedBy_Id(targetId)) {
+                throw new AdminActionRefusedException("Cannot delete user with authored or approved reports. Disable the account instead.");
+            }
+
+            userRepository.delete(target);
+
+            recorder.record(AuditEventType.ADMIN_ACCOUNT_DELETED, admin.getUserId(), null,
+                    AuditReasonCode.DELETED_BY_ADMIN.name());
+            return ActionResult.DONE;
+        }));
+
+        if (result == ActionResult.DONE) {
+            sessionExpirer.accept(targetId);
+        }
+        return result;
+    }
+
+    @Override
+    public List<OrganisationSummary> listOrganisations(CaseVaultUserPrincipal admin) {
+        requireAdmin(admin);
+        return organisationRepository.findAll().stream()
+                .map(org -> new OrganisationSummary(org.getId(), org.getName(), org.getCode()))
+                .sorted(java.util.Comparator.comparing(OrganisationSummary::name, String.CASE_INSENSITIVE_ORDER))
+                .toList();
     }
 
     @Override
