@@ -133,6 +133,30 @@ public class AdminController {
         });
     }
 
+    @GetMapping("/users/{id}/reset-password-confirm")
+    @PreAuthorize("isAuthenticated()")
+    public String resetPasswordConfirm(@PathVariable("id") String id,
+                                       @AuthenticationPrincipal CaseVaultUserPrincipal principal, Model model) {
+        model.addAttribute("target", adminUserService.getUser(principal, id));
+        addPrincipal(model, principal);
+        return "admin/reset-password-confirm";
+    }
+
+    @PostMapping("/users/{id}/reset-password")
+    @PreAuthorize("isAuthenticated()")
+    public String resetPassword(@PathVariable("id") String id, @AuthenticationPrincipal CaseVaultUserPrincipal principal,
+                                RedirectAttributes redirect) {
+        try {
+            var result = adminUserService.resetPassword(principal, id);
+            redirect.addFlashAttribute("temporaryPassword", result.temporaryPassword());
+            redirect.addFlashAttribute("resetUsername", result.username());
+            redirect.addFlashAttribute("successMessage", "One-time password generated for user " + result.username() + ".");
+        } catch (AdminActionRefusedException refused) {
+            redirect.addFlashAttribute("errorMessage", refused.getMessage());
+        }
+        return "redirect:/admin/users";
+    }
+
     @GetMapping("/health")
     @PreAuthorize("isAuthenticated()")
     public String health(@AuthenticationPrincipal CaseVaultUserPrincipal principal, Model model) {

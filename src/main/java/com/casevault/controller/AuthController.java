@@ -1,16 +1,31 @@
 package com.casevault.controller;
 
+import com.casevault.dto.ChangePasswordRequestDto;
 import com.casevault.model.Role;
 import com.casevault.security.CaseVaultUserPrincipal;
 import com.casevault.service.AdminUserService;
+import com.casevault.service.UserAccountService;
+import jakarta.validation.Valid;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
+import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 @Controller
 public class AuthController {
+
+    private final AdminUserService adminUserService;
+    private final UserAccountService userAccountService;
+
+    public AuthController(AdminUserService adminUserService, UserAccountService userAccountService) {
+        this.adminUserService = adminUserService;
+        this.userAccountService = userAccountService;
+    }
 
     @GetMapping("/login")
     public String login(
@@ -35,24 +50,58 @@ public class AuthController {
         return "login";
     }
 
-    private final AdminUserService adminUserService;
-
-    public AuthController(AdminUserService adminUserService) {
-        this.adminUserService = adminUserService;
-    }
-
     @GetMapping("/dashboard")
     public String dashboard(@AuthenticationPrincipal CaseVaultUserPrincipal principal, Model model) {
         if (principal != null) {
-            model.addAttribute("username", principal.getUsername());
-            model.addAttribute("role", principal.getRole().name());
-            model.addAttribute("organisationId", principal.getOrganisationId() != null ? principal.getOrganisationId() : "N/A");
-            model.addAttribute("organisationCode", principal.getOrganisationCode());
+            addPrincipal(model, principal);
             if (principal.getRole() == Role.AUDITOR_ADMIN) {
                 addAuditorStatus(principal, model);
             }
         }
         return "dashboard";
+    }
+
+    @GetMapping("/account/credentials")
+    public String changePasswordForm(Model model, @AuthenticationPrincipal CaseVaultUserPrincipal principal) {
+        if (!model.containsAttribute("changePasswordRequestDto")) {
+            model.addAttribute("changePasswordRequestDto", new ChangePasswordRequestDto());
+        }
+        addPrincipal(model, principal);
+        return "account/credentials";
+    }
+
+    @PostMapping("/account/credentials")
+    public String changePassword(@Valid @ModelAttribute("changePasswordRequestDto") ChangePasswordRequestDto form,
+                                 BindingResult bindingResult,
+                                 @AuthenticationPrincipal CaseVaultUserPrincipal principal,
+                                 Model model,
+                                 RedirectAttributes redirect) {
+        if (principal == null) {
+            return "redirect:/login";
+        }
+        if (bindingResult.hasErrors()) {
+            addPrincipal(model, principal);
+            return "account/credentials";
+        }
+
+        try {
+            userAccountService.changePassword(principal, form);
+            redirect.addFlashAttribute("successMessage", "Your password has been changed successfully.");
+            return "redirect:/dashboard";
+        } catch (IllegalArgumentException e) {
+            model.addAttribute("errorMessage", e.getMessage());
+            addPrincipal(model, principal);
+            return "account/credentials";
+        }
+    }
+
+    private void addPrincipal(Model model, CaseVaultUserPrincipal principal) {
+        if (principal != null) {
+            model.addAttribute("username", principal.getUsername());
+            model.addAttribute("role", principal.getRole().name());
+            model.addAttribute("organisationId", principal.getOrganisationId() != null ? principal.getOrganisationId() : "N/A");
+            model.addAttribute("organisationCode", principal.getOrganisationCode());
+        }
     }
 
     /**

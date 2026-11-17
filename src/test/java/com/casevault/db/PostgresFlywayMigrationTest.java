@@ -68,7 +68,7 @@ public class PostgresFlywayMigrationTest {
         assertNotNull(flyway, "Flyway bean must be configured");
 
         MigrationInfo[] applied = flyway.info().applied();
-        assertEquals(10, applied.length, "V1-V6, the PostgreSQL-only V7, V8 (reports), V9 (user status trace) and V10 (report version) must be applied to PostgreSQL");
+        assertEquals(11, applied.length, "V1-V6, the PostgreSQL-only V7, V8 (reports), V9 (user status trace), V10 (report version) and V11 (password reset required) must be applied to PostgreSQL");
 
         assertEquals("1", applied[0].getVersion().getVersion());
         assertEquals("baseline", applied[0].getDescription());
@@ -113,6 +113,11 @@ public class PostgresFlywayMigrationTest {
         assertEquals("10", applied[9].getVersion().getVersion());
         assertEquals("report version", applied[9].getDescription());
         assertEquals(MigrationState.SUCCESS, applied[9].getState());
+
+        // Phase Password Reset: V11 password reset required (all databases).
+        assertEquals("11", applied[10].getVersion().getVersion());
+        assertEquals("password reset required", applied[10].getDescription());
+        assertEquals(MigrationState.SUCCESS, applied[10].getState());
     }
 
     @Test

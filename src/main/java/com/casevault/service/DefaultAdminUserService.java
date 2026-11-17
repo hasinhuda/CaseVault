@@ -186,6 +186,37 @@ public class DefaultAdminUserService implements AdminUserService {
     }
 
     @Override
+    public PasswordResetResult resetPassword(CaseVaultUserPrincipal admin, String userId) {
+        requireAdmin(admin);
+        String targetId = requireShape(userId);
+        PasswordResetResult result = locked(admin, () -> transactionTemplate.execute(status -> {
+            requireActiveActor(admin);
+            User target = userRepository.findById(targetId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Not found"));
+
+            if (Objects.equals(target.getId(), admin.getUserId())) {
+                throw new AdminActionRefusedException("Admin cannot reset their own password via administrative reset; use the change password page.");
+            }
+
+            String tempPassword = com.casevault.bootstrap.DataBootstrapService.generateSecurePassword(18);
+            Instant now = Instant.now();
+            target.setPasswordHash(passwordEncoder.encode(tempPassword));
+            target.setPasswordResetRequired(true);
+            target.setPasswordUpdatedAt(now);
+            target.recordStatusChange(admin.getUserId(), now);
+            userRepository.save(target);
+
+            recorder.record(AuditEventType.ADMIN_PASSWORD_RESET, admin.getUserId(), null,
+                    AuditReasonCode.PASSWORD_RESET_BY_ADMIN.name());
+
+            return new PasswordResetResult(target.getId(), target.getUsername(), tempPassword);
+        }));
+
+        sessionExpirer.accept(targetId);
+        return result;
+    }
+
+    @Override
     public UserRow createUser(CaseVaultUserPrincipal admin, CreateUserRequestDto request) {
         requireAdmin(admin);
         if (request == null) {

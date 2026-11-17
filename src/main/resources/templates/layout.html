@@ -17,6 +17,7 @@
         <span class="layout-header-org" th:if="${organisationCode != null}" th:text="'[' + ${organisationCode} + ']'">[ORG]</span>
         <span th:text="${username}">user</span>
         <span class="badge-role" th:text="${role}">ROLE</span>
+        <a th:href="@{/account/credentials}" class="btn btn-secondary btn-sm">My Account</a>
         <form th:action="@{/logout}" method="post">
             <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
             <button type="submit" class="btn btn-secondary btn-sm">Sign Out</button>

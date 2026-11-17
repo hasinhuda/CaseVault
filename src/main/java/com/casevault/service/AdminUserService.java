@@ -31,6 +31,9 @@ public interface AdminUserService {
     record OrganisationSummary(String id, String name, String code) {
     }
 
+    record PasswordResetResult(String userId, String username, String temporaryPassword) {
+    }
+
     enum ActionResult { DONE, NO_CHANGE }
 
     /** Health summary without paths, versions, host names, secrets or exception text. */
@@ -47,6 +50,8 @@ public interface AdminUserService {
     ActionResult enable(CaseVaultUserPrincipal admin, String userId);
 
     void revokeSessions(CaseVaultUserPrincipal admin, String userId);
+
+    PasswordResetResult resetPassword(CaseVaultUserPrincipal admin, String userId);
 
     UserRow createUser(CaseVaultUserPrincipal admin, com.casevault.dto.CreateUserRequestDto request);
 
