@@ -1,0 +1,21 @@
+# Stage B step 2: simulated failure and restores that must be refused (2026-11-13)
+# Scrubbed: no passphrase, no keys. Folder names are timestamps.
+
+== simulate the failure: scripts\deploy-down.ps1 -RemoveData
+down exit code 0
+docker ps -a --filter name=cvr-      -> (no containers)
+docker volume ls --filter name=cvr_  -> (no volumes)
+
+== scripts\restore.ps1 -BackupFolder 20261113-170618Z   (no -Confirm)
+DRY RUN: would restore 20261113-170618Z into project casevault-rebuild (database, evidence, keys).
+Add -Confirm to proceed. Requirements: no cvr- containers and no cvr_pgdata / cvr_evidence / cvr_keys volumes (scripts\deploy-down.ps1 -RemoveData).
+
+== tampered copy (one byte of payload.tar.enc flipped in a COPY of the backup folder, then the copy was deleted)
+MANIFEST CHECK FAILED: the encrypted file does not match its recorded SHA-256. Nothing was restored.
+
+== wrong passphrase
+Manifest check passed (encrypted file hash).
+WARNING: encryption tool reported: gpg: AES256.CFB encrypted data / encrypted with 1 passphrase / decryption failed: Bad session key
+Decryption failed (wrong passphrase or damaged file). Nothing was restored.
+
+== after both refusals: no cvr- containers and no cvr_ volumes were created

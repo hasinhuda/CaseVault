@@ -1,0 +1,32 @@
+# Stage B step 5: image upgrade and rollback (2026-11-13). Scrubbed. Image ids shortened to 12 hex characters.
+# deploy\compose.yaml now has: image: ${CVR_APP_IMAGE:-cvr-app:dev}   (default behaviour unchanged, see below)
+# scripts\deploy-up.ps1 accepts CVR_APP_IMAGE only in the form cvr-app:<tag>.
+
+== default unchanged
+docker compose -p casevault-rebuild -f deploy/compose.yaml config | grep image:   (CVR_APP_IMAGE not set)
+    image: cvr-app:dev
+    image: postgres:16-alpine@sha256:f377d590...
+    image: nginx:stable-alpine@sha256:901e593c...
+with CVR_APP_IMAGE=cvr-app:prev the cvr-app service shows image: cvr-app:prev
+
+== before
+running container image id 50e007d926bf (configured as cvr-app:dev)
+== 1. keep the current image as the rollback target
+docker tag cvr-app:dev cvr-app:prev                    -> exit 0
+== 2. build "next" from the SAME source; the only difference is one label (docker build --label casevault.rollback-demo=next -t cvr-app:next .)
+naming to docker.io/library/cvr-app:next done
+== 3. upgrade:  $env:CVR_APP_IMAGE = 'cvr-app:next'; scripts\deploy-up.ps1
+after upgrade   running container image id 77537536641d (configured as cvr-app:next)
+                tags: cvr-app:dev=50e007d926bf cvr-app:prev=50e007d926bf cvr-app:next=77537536641d
+== 4. rollback (the one documented command):  $env:CVR_APP_IMAGE = 'cvr-app:prev'; scripts\deploy-up.ps1
+after rollback  running container image id 50e007d926bf (configured as cvr-app:prev)
+                tags: cvr-app:dev=50e007d926bf cvr-app:prev=50e007d926bf cvr-app:next=77537536641d
+== after the rollback, the data are intact (integrity script)
+case exists (client sees title): True
+evidence download : HTTP 200 ; sha256 first12 7a00d2cf5f54 ; original first12 7a00d2cf5f54 ; identical = True
+note exists (manager sees note): True
+audit chain      : Chain valid ; 31 events verified (earlier run, after upgrade) / 40 events verified (after rollback)
+
+HONEST LIMIT: the database is NOT rolled back. Flyway migrations are forward-only: if a newer image applied a migration, the older image
+runs against the newer schema, which may fail or misbehave. Here no migration was involved (same source). For a release with a migration
+the rollback needs the backup from before the upgrade (scripts\backup.ps1 first, then upgrade; restore if the old image cannot run).

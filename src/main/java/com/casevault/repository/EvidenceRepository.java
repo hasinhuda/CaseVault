@@ -8,5 +8,7 @@ import java.util.List;
 public interface EvidenceRepository extends JpaRepository<Evidence, String> {
 
     List<Evidence> findByACaseId(String caseId);
+
+    boolean existsByUploadedBy_Id(String uploadedById);
 }
 

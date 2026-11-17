@@ -1,0 +1,32 @@
+# Stage B step 3: restore and integrity proof (2026-11-13)
+# Scrubbed. The stack is started by restore.ps1 WITHOUT deploy\compose.first-run.yaml: no accounts are created, no credentials file exists.
+
+== scripts\restore.ps1 -BackupFolder 20261113-170618Z -Confirm   (exit code 0)
+Manifest check passed (encrypted file hash).
+Decryption and part hashes verified.
+(compose creates cvr-db, cvr-app, cvr-nginx; cvr-db started and healthy)
+Restoring the database ...
+Restoring evidence and key volumes ...
+(cvr-db, cvr-app, cvr-nginx started, all healthy)
+Restore finished.
+
+== state
+docker ps: cvr-nginx, cvr-app, cvr-db all (healthy)
+volumes:   cvr_evidence, cvr_keys, cvr_pgdata   (no cvr_firstrun: the override was not used)
+cvr-app environment contains no BOOTSTRAP variable (count 0); the application log has no "first-run" or "Initial accounts" line (count 0)
+database rows: users 4, cases 1, audit_events 23
+
+== integrity proof through https://localhost:8443
+admin_auditor login : 302 https://localhost:8443/dashboard
+manager_alice login : 302 https://localhost:8443/dashboard
+analyst_bob login : 302 https://localhost:8443/dashboard
+client_charlie login : 302 https://localhost:8443/dashboard
+case exists (client sees title): True
+evidence download : HTTP 200 ; sha256 first12 7a00d2cf5f54 ; original first12 7a00d2cf5f54 ; identical = True
+note exists (manager sees note): True
+audit chain      : Chain valid ; 22 events verified   (verified by admin_auditor through the application)
+
+Meaning: the same four users still log in with their original passwords, the case, the note and the encrypted evidence file survived,
+the decrypted download has the same SHA-256 as the upload (first 12 characters shown; full values compared by the script), and the
+HMAC chain still verifies, which also shows that the audit key came back with the key volume.
+The count of verified events is higher than in the baseline (13) because the logins and checks since then are audit events too.

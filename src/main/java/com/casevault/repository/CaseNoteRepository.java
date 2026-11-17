@@ -8,5 +8,7 @@ import java.util.List;
 public interface CaseNoteRepository extends JpaRepository<CaseNote, String> {
 
     List<CaseNote> findByCaseEntityIdOrderByCreatedAtAsc(String caseId);
+
+    boolean existsByAuthor_Id(String authorId);
 }
 

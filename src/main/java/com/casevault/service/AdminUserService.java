@@ -28,6 +28,9 @@ public interface AdminUserService {
         }
     }
 
+    record OrganisationSummary(String id, String name, String code) {
+    }
+
     enum ActionResult { DONE, NO_CHANGE }
 
     /** Health summary without paths, versions, host names, secrets or exception text. */
@@ -44,6 +47,12 @@ public interface AdminUserService {
     ActionResult enable(CaseVaultUserPrincipal admin, String userId);
 
     void revokeSessions(CaseVaultUserPrincipal admin, String userId);
+
+    UserRow createUser(CaseVaultUserPrincipal admin, com.casevault.dto.CreateUserRequestDto request);
+
+    ActionResult delete(CaseVaultUserPrincipal admin, String userId);
+
+    List<OrganisationSummary> listOrganisations(CaseVaultUserPrincipal admin);
 
     HealthView health(CaseVaultUserPrincipal admin);
 }

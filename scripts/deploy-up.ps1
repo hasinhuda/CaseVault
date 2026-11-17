@@ -14,6 +14,10 @@ param([switch]$Build, [switch]$FirstRun, [switch]$FinishFirstRun)
 Assert-Project
 if ($FirstRun -and $FinishFirstRun) { throw 'Use either -FirstRun or -FinishFirstRun, not both.' }
 Assert-SecretFilesExist
+# Rollback/upgrade switch (docs/runbook-ops.md): CVR_APP_IMAGE may name another LOCAL cvr-app tag, nothing else.
+if ($env:CVR_APP_IMAGE -and $env:CVR_APP_IMAGE -notmatch '^cvr-app:[A-Za-z0-9][A-Za-z0-9._-]{0,60}$') {
+    throw "Refusing: CVR_APP_IMAGE must be a local tag of the form cvr-app:<tag> (got '$($env:CVR_APP_IMAGE)')."
+}
 
 & docker image inspect cvr-app:dev *> $null
 $imageMissing = ($LASTEXITCODE -ne 0)

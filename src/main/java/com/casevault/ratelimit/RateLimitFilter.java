@@ -65,13 +65,14 @@ public class RateLimitFilter extends OncePerRequestFilter {
         }
         LimiterName name = null;
         String key = null;
-        String path = request.getRequestURI().substring(request.getContextPath().length());
+        String path = requestPath(request);
         String method = request.getMethod();
 
         if ("POST".equals(method) && "/login".equals(path)) {
             name = LimiterName.LOGIN;
             key = clientAddress(request);
-        } else if (path.startsWith("/api/") && isBasicAuthorization(request)) {
+        } else if (isBasicAuthorization(request)) {
+            // CR-02: an HTTP Basic header is an authentication attempt on ANY URL, not only below /api.
             name = LimiterName.API_BASIC;
             key = clientAddress(request);
         } else {
@@ -126,6 +127,21 @@ public class RateLimitFilter extends OncePerRequestFilter {
             return principal.getUserId();
         }
         return null;
+    }
+
+    /**
+     * CR-01: the path the application will really route: decoded and normalised by the container (servlet path plus
+     * path info), the same form Spring Security and Spring MVC match against. The raw request URI is NOT used: a
+     * percent-encoded spelling such as /%6Cogin is routed to /login but never equals the string "/login".
+     */
+    private static String requestPath(HttpServletRequest request) {
+        String servletPath = request.getServletPath();
+        String pathInfo = request.getPathInfo();
+        String path = (servletPath == null ? "" : servletPath) + (pathInfo == null ? "" : pathInfo);
+        if (path.isEmpty()) {
+            path = request.getRequestURI().substring(request.getContextPath().length());
+        }
+        return path;
     }
 
     private static boolean isBasicAuthorization(HttpServletRequest request) {
