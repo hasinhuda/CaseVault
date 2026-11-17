@@ -41,7 +41,7 @@ class UiA11yStructureTest {
     void pageBasics() throws IOException {
         List<String> problems = new ArrayList<>();
         List<Path> pages = pages();
-        assertEquals(15, pages.size(), "all 15 page templates are scanned");
+        assertEquals(17, pages.size(), "all 17 page templates are scanned");
         for (Path page : pages) {
             String html = Files.readString(page);
             String n = name(page);

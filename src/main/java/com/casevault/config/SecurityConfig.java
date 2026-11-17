@@ -7,6 +7,7 @@ import com.casevault.security.SessionAbsoluteTimeoutFilter;
 import com.casevault.service.AuditEventRecorder;
 import com.casevault.service.AuditEventType;
 import com.casevault.security.UserStatusEnforcementFilter;
+import com.casevault.security.PasswordResetEnforcementFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpStatus;
@@ -159,7 +160,8 @@ public class SecurityConfig {
             .addFilterBefore(new SessionAbsoluteTimeoutFilter(), UsernamePasswordAuthenticationFilter.class)
             // Phase 8A: in-process rate limiting; before the login filter so every attempt is counted.
             .addFilterBefore(rateLimitFilter, UsernamePasswordAuthenticationFilter.class)
-            .addFilterAfter(new UserStatusEnforcementFilter(userRepository), UsernamePasswordAuthenticationFilter.class);
+            .addFilterAfter(new UserStatusEnforcementFilter(userRepository), UsernamePasswordAuthenticationFilter.class)
+            .addFilterAfter(new PasswordResetEnforcementFilter(userRepository), UserStatusEnforcementFilter.class);
 
         return http.build();
     }

@@ -63,6 +63,9 @@ public class User {
     @Column(name = "status_changed_by", length = 36)
     private String statusChangedBy;
 
+    @Column(name = "password_reset_required", nullable = false)
+    private boolean passwordResetRequired = false;
+
     public User() {
     }
 
@@ -77,6 +80,7 @@ public class User {
         this.enabled = enabled;
         this.failedLoginAttempts = 0;
         this.lockedUntil = null;
+        this.passwordResetRequired = false;
         Instant timestamp = now != null ? now : Instant.now();
         this.passwordUpdatedAt = timestamp;
         this.createdAt = timestamp;
@@ -192,6 +196,14 @@ public class User {
         this.statusChangedBy = actorUserId;
         this.statusChangedAt = now;
         this.updatedAt = now;
+    }
+
+    public boolean isPasswordResetRequired() {
+        return passwordResetRequired;
+    }
+
+    public void setPasswordResetRequired(boolean passwordResetRequired) {
+        this.passwordResetRequired = passwordResetRequired;
     }
 
     public boolean isAccountLocked(Instant now) {

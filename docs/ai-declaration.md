@@ -58,3 +58,6 @@ This document transparently tracks all AI tooling and assistant usage during the
 
 - 2026-11-16: Assisted with administrative user creation and deletion (AdminUserService, CreateUserRequestDto, DefaultAdminUserService createUser and delete with forensic links check across 5 tables, last-active admin prevention, self-deletion prevention, password policy validation, session termination via SessionRegistry, Thymeleaf templates admin/create and admin/delete-confirm, SEC-ADMIN-USER-01..11 in AdminUserManagementTest); verified via mvnw verify (387 tests pass, 0 failures, 0 skipped, SpotBugs 0 bugs). [tool/model to be completed by the author] [DRAFT]
 
+- 2026-11-17: Assisted with admin-assisted one-time password reset and forced password change workflow (AdminUserService.resetPassword, UserAccountService.changePassword, PasswordResetEnforcementFilter, V11 Flyway migration, Thymeleaf templates admin/reset-password-confirm and account/credentials, SEC-PWD-RESET-01..12 in PasswordResetFlowTest); verified via mvnw verify. [tool/model to be completed by the author] [DRAFT]
+
+

@@ -574,7 +574,7 @@ class AdminHttpTest {
         Pattern forbidden = Pattern.compile("th:utext|innerHTML|javascript:|<script|style=|\\son[a-z]+\\s*=", Pattern.CASE_INSENSITIVE);
         try (Stream<Path> files = Files.list(dir)) {
             List<Path> templates = files.filter(p -> p.toString().endsWith(".html")).toList();
-            assertEquals(5, templates.size());
+            assertEquals(6, templates.size());
             for (Path template : templates) {
                 for (String line : Files.readAllLines(template)) {
                     assertFalse(forbidden.matcher(line).find(), template.getFileName() + ": " + line.trim());

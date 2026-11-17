@@ -22,6 +22,7 @@ public class CaseVaultUserPrincipal implements UserDetails {
     private final String organisationCode;
     private final boolean enabled;
     private final boolean accountNonLocked;
+    private final boolean passwordResetRequired;
 
     public CaseVaultUserPrincipal(User user, Instant now) {
         this.userId = user.getId();
@@ -32,6 +33,11 @@ public class CaseVaultUserPrincipal implements UserDetails {
         this.organisationCode = user.getOrganisation() != null ? user.getOrganisation().getCode() : null;
         this.enabled = user.isEnabled();
         this.accountNonLocked = !user.isAccountLocked(now != null ? now : Instant.now());
+        this.passwordResetRequired = user.isPasswordResetRequired();
+    }
+
+    public boolean isPasswordResetRequired() {
+        return passwordResetRequired;
     }
 
     public String getUserId() {
